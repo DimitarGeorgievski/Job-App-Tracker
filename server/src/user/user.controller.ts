@@ -6,11 +6,16 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from 'generated/prisma/client';
+import {
+  UserOrderByWithRelationInput,
+  UserWhereUniqueInput,
+} from 'generated/prisma/models';
 
 @Controller('user')
 export class UserController {
@@ -20,10 +25,17 @@ export class UserController {
   create(@Body() createUserDto: CreateUserDto) {
     return this.userService.create(createUserDto);
   }
-
   @Get()
-  findAll() {
-    return this.userService.findAll();
+  findAll(
+    @Param('params')
+    params: {
+      skip?: number;
+      take?: number;
+      where?: UserWhereUniqueInput;
+      orderBy?: UserOrderByWithRelationInput;
+    },
+  ): Promise<User[] | null> {
+    return this.userService.findAll(params);
   }
 
   @Get(':id')
@@ -37,11 +49,11 @@ export class UserController {
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.update(+id, updateUserDto);
+    return this.userService.update(Number(id), updateUserDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.userService.remove(+id);
+    return this.userService.remove(Number(id));
   }
 }
