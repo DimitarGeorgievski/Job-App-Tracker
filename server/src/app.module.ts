@@ -8,6 +8,7 @@ import { UserModule } from './user/user.module';
 import { UserService } from './user/user.service';
 import { PrismaService } from './prisma/prisma.service';
 import { JobModule } from './job/job.module';
+import { ApplicationModule } from './application/application.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { JobModule } from './job/job.module';
     AuthModule,
     UserModule,
     JobModule,
+    ApplicationModule,
   ],
   controllers: [AppController],
   providers: [AppService,UserService,PrismaService],

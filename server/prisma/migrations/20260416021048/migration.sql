@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "AppStatus" ADD VALUE 'FOLLOW_UP_DUE';

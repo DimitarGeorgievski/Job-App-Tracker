@@ -39,6 +39,7 @@ model Application{
   id Int @default(autoincrement()) @id
   userId Int
   jobId Int
+  notes String?
   status AppStatus @default(PENDING)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -73,8 +74,11 @@ enum Role {
   ADMIN
 }
 enum AppStatus {
+  APPLIED
+  INTERVIEW
+  OFFER
   PENDING
-  REVIEWED
-  ACCEPTED
   REJECTED
+  ACCEPTED
+  FOLLOW_UP_DUE
 }

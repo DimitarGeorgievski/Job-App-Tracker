@@ -17,10 +17,10 @@ import {
 } from 'generated/prisma/models';
 import { Job, Role } from 'generated/prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
-import { RolesGuard } from 'src/roles/roles/roles.guard';
-import { Roles } from 'src/roles/roles/roles.decorator';
+import { RolesGuard } from 'src/roles/roles.guard';
+import { Roles } from 'src/roles/roles.decorator';
 
-@UseGuards(AuthGuard,RolesGuard)
+@UseGuards(AuthGuard, RolesGuard)
 @Controller('job')
 export class JobController {
   constructor(private readonly jobService: JobService) {}
