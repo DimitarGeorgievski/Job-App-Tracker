@@ -1,7 +1,6 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { redisConfig } from 'src/queue/redis.config';
 
 @Injectable()
 export class ApplicationReminderService {

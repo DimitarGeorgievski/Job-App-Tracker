@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Application, AppStatus, Prisma } from 'generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ApplicationReminderService } from './services/application-reminder.service';
-import { CreateApplicationDto } from './dto/create-application.dto';
+import { ApplicationReminderService } from './application-reminder.service';
+import { CreateApplicationDto } from '../dto/create-application.dto';
 
 @Injectable()
 export class ApplicationService {
