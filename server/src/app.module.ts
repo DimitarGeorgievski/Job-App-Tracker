@@ -10,6 +10,8 @@ import { PrismaService } from './prisma/prisma.service';
 import { JobModule } from './job/job.module';
 import { ApplicationModule } from './application/application.module';
 import { ConfigModule } from '@nestjs/config';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { CoverLetterModule } from './cover-letter/cover-letter.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { ConfigModule } from '@nestjs/config';
     UserModule,
     JobModule,
     ApplicationModule,
+    CloudinaryModule,
+    CoverLetterModule,
   ],
   controllers: [AppController],
   providers: [AppService,UserService,PrismaService],

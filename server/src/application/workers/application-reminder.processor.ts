@@ -16,14 +16,13 @@ export class ApplicationReminderProcessor extends WorkerHost {
   }
   async process(job: Job<{ applicationId: number }>) {
     const { applicationId } = job.data;
-    const app = await this.prisma.application.findUnique({
+    const app = await this.prisma.application.findUniqueOrThrow({
       where: { id: applicationId },
       include: {
         user: true,
         job: true,
       },
     });
-    if (!app) return;
     if (app.status !== AppStatus.APPLIED) return;
     await this.prisma.application.update({
       where: { id: applicationId },
