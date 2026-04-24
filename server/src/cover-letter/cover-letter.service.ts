@@ -6,6 +6,8 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CoverLetter, Prisma } from 'generated/prisma/client';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
+import { CreateCoverLetterDto } from './dto/create-cover-letter.dto';
+import { UpdateCoverLetterDto } from './dto/update-cover-letter.dto';
 
 @Injectable()
 export class CoverLetterService {
@@ -14,7 +16,7 @@ export class CoverLetterService {
     private cloudinaryService: CloudinaryService,
   ) {}
   async create(
-    data: Prisma.CoverLetterCreateInput,
+    data: CreateCoverLetterDto,
     userId: number,
     file?: Express.Multer.File,
   ) {
@@ -33,7 +35,8 @@ export class CoverLetterService {
     }
     return await this.prisma.coverLetter.create({
       data: {
-        ...data,
+        processed: data.processed,
+        result: data.result,
         content: data.content,
         fileURL: fileURL,
         filePublicId: filePublicId,
@@ -43,7 +46,7 @@ export class CoverLetterService {
           },
         },
         application: {
-          connect: { id: data.application.connect?.id },
+          connect: { id: data.applicationId },
         },
       },
     });
@@ -71,7 +74,7 @@ export class CoverLetterService {
 
   async update(
     id: number,
-    data: Prisma.CoverLetterUpdateInput,
+    data: UpdateCoverLetterDto,
     file?: Express.Multer.File,
   ) {
     if (!data.content && !file) {
@@ -89,17 +92,18 @@ export class CoverLetterService {
     }
     return await this.prisma.coverLetter.update({
       data: {
-        ...data,
+        processed: data.processed,
+        result: data.result,
         content: data.content,
         fileURL: fileURL,
         filePublicId: filePublicId,
         user: {
           connect: {
-            id: id,
+            id: data.userId,
           },
         },
         application: {
-          connect: { id: data.application?.connect?.id },
+          connect: { id: data.applicationId },
         },
       },
       where: { id },

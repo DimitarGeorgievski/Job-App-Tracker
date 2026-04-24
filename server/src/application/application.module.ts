@@ -6,6 +6,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { ApplicationReminderProcessor } from './workers/application-reminder.processor';
 import { ApplicationReminderService } from './services/application-reminder.service';
+import { UserModule } from 'src/user/user.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ApplicationReminderService } from './services/application-reminder.serv
     }),
     MailModule,
     PrismaModule,
+    UserModule
   ],
   controllers: [ApplicationController],
   providers: [

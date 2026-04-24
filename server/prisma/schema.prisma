@@ -63,15 +63,18 @@ model CoverLetter{
   updatedAt DateTime @updatedAt
   application Application @relation(fields: [applicationId], references: [id])
   user User @relation(fields: [userId], references: [id])
+  Analytics Analytics?
 }
 
 model Analytics {
   id Int @default(autoincrement()) @id
   applicationId Int
+  coverLetterId Int @unique
   score Float
   keywords String[]
   createdAt DateTime @default(now())
   application Application @relation(fields: [applicationId], references: [id])
+  coverLetter CoverLetter @relation(fields: [coverLetterId], references: [id])
 }
 
 enum Role {
