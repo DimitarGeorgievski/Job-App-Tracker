@@ -20,6 +20,16 @@ export class ApplicationService {
             id: data.userId,
           },
         },
+        // coverLetters: {
+        //   connect: {
+        //     id: data.coverLetterId,
+        //   },
+        // },
+        // Analytics: {
+        //   connect: {
+        //     id: data.analyticsId,
+        //   },
+        // },
         job: {
           connect: {
             id: data.jobId,

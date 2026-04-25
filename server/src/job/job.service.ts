@@ -16,7 +16,7 @@ export class JobService {
     take?: number;
     where?: Prisma.JobWhereInput;
     orderBy?: Prisma.JobOrderByWithRelationInput;
-  }): Promise<Job[]> {
+  } = {}): Promise<Job[]> {
     const { skip, orderBy, take, where } = params;
     return await this.prisma.job.findMany({
       skip,

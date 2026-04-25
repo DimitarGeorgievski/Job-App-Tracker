@@ -9,6 +9,7 @@ import {
   UseInterceptors,
   UploadedFile,
   ParseFilePipeBuilder,
+  ValidationPipe,
 } from '@nestjs/common';
 import { CoverLetterService } from './cover-letter.service';
 import { CreateCoverLetterDto } from './dto/create-cover-letter.dto';
@@ -17,16 +18,16 @@ import {
   CoverLetterOrderByWithRelationInput,
   CoverLetterWhereUniqueInput,
 } from 'generated/prisma/models';
-import { CoverLetterFileInterceptor } from './interceptors/Cover-letter-file.interceptor';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('cover-letter')
 export class CoverLetterController {
   constructor(private readonly coverLetterService: CoverLetterService) {}
 
-  @Post()
-  @UseInterceptors(CoverLetterFileInterceptor())
+  @Post(':userId')
+  @UseInterceptors(FileInterceptor('file'))
   create(
-    @Body() data: CreateCoverLetterDto,
+    @Body(new ValidationPipe({ transform: true })) data: CreateCoverLetterDto,
     @Param('userId') userId: string,
     @UploadedFile(
       new ParseFilePipeBuilder()
@@ -35,12 +36,14 @@ export class CoverLetterController {
           errorMessage: "Your file must be one of the following formats."
         })
         .addMaxSizeValidator({
-          maxSize: 1024,
+          maxSize: 1024 * 1024,
           errorMessage: "Your file is too big."
         })
-        .build(),
+        .build({
+          fileIsRequired: false
+        }),
     )
-    file: Express.Multer.File,
+    file?: Express.Multer.File,
   ) {
     return this.coverLetterService.create(data, Number(userId), file);
   }
@@ -65,10 +68,10 @@ export class CoverLetterController {
 
   @Patch(':id')
   update(
-    @Param('id') id: string,
+    @Param('userId') userId: string,
     @Body() updateCoverLetterDto: UpdateCoverLetterDto,
   ) {
-    return this.coverLetterService.update(+id, updateCoverLetterDto);
+    return this.coverLetterService.update(Number(userId), updateCoverLetterDto);
   }
 
   @Delete(':id')

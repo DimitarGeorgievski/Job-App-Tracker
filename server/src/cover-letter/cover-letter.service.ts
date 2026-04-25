@@ -42,11 +42,11 @@ export class CoverLetterService {
         filePublicId: filePublicId,
         user: {
           connect: {
-            id: userId,
+            id: Number(userId),
           },
         },
         application: {
-          connect: { id: data.applicationId },
+          connect: { id: Number(data.applicationId) },
         },
       },
     });
@@ -56,7 +56,7 @@ export class CoverLetterService {
     take?: number;
     where?: Prisma.CoverLetterWhereInput;
     orderBy?: Prisma.CoverLetterOrderByWithRelationInput;
-  }): Promise<CoverLetter[]> {
+  } = {}): Promise<CoverLetter[]> {
     const { skip, orderBy, take, where } = params;
     return await this.prisma.coverLetter.findMany({
       skip,
