@@ -6,7 +6,6 @@ import {
   Post,
   Res,
   Headers,
-  Head,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { type Response } from 'express';
@@ -27,9 +26,9 @@ export class AuthController {
   async loginUser(@Body() credentials: CredentialsDto, @Res() res: Response) {
     const { user, token, refreshToken } =
       await this.authService.loginUser(credentials);
-    res.set('access-token', token);
-    res.set('refresh-token', refreshToken);
-    res.json(user);
+    res.header('access-token', token);
+    res.header('refresh-token', refreshToken);
+    res.send(user);
   }
 
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -39,7 +38,7 @@ export class AuthController {
     @Headers('refresh-token') refreshToken: string,
   ) {
     const { token } = await this.authService.refreshAccessToken(refreshToken);
-    res.set('access-token', token);
+    res.header('access-token', token);
     res.sendStatus(HttpStatus.NO_CONTENT);
   }
 

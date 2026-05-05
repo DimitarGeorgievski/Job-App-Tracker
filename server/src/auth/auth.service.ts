@@ -9,7 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { CredentialsDto } from './dto/Credentials.dto';
 import { UserService } from 'src/user/user.service';
-import { Prisma } from 'generated/prisma/client';
+import { Prisma, Role } from 'generated/prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -22,6 +22,8 @@ export class AuthService {
   async registerUser(userData: Prisma.UserCreateInput) {
     const userExists = await this.usersService.findByEmail(userData.email);
     if (userExists) throw new BadRequestException('User already exists');
+    if (userData.role === Role.ADMIN)
+      throw new ForbiddenException('admin user cannot be created 😉😘');
     const hashedPassword = await hash(userData.password, 8);
     userData.password = hashedPassword;
     await this.usersService.create(userData);
@@ -35,9 +37,9 @@ export class AuthService {
     );
     if (!isPasswordValid)
       throw new UnauthorizedException('invalid credentials');
-    const token = await this.jwtService.signAsync({ userId: foundUser.id });
+    const token = await this.jwtService.signAsync({ userId: foundUser.id, role: foundUser.role });
     const refreshToken = await this.jwtService.signAsync(
-      { userId: foundUser.id },
+      { userId: foundUser.id, role: foundUser.role },
       {
         secret: this.configService.get('REFRESH_TOKEN_SECRET'),
         expiresIn: '7d',

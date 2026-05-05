@@ -18,7 +18,7 @@ model User {
   email String @unique
   name String 
   password String
-  role Role @default(USER)
+  role Role
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   applications Application[]
@@ -44,8 +44,8 @@ model Application{
   status AppStatus @default(PENDING)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user User @relation(fields: [userId], references: [id])
-  job Job @relation(fields: [jobId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
   coverLetters CoverLetter[]
   Analytics Analytics[]
 }
@@ -61,8 +61,8 @@ model CoverLetter{
   result String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  application Application @relation(fields: [applicationId], references: [id])
-  user User @relation(fields: [userId], references: [id])
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   Analytics Analytics?
 }
 
@@ -70,16 +70,18 @@ model Analytics {
   id Int @default(autoincrement()) @id
   applicationId Int
   coverLetterId Int @unique
-  score Float
+  companyId Int
+  score Float 
   keywords String[]
   createdAt DateTime @default(now())
-  application Application @relation(fields: [applicationId], references: [id])
-  coverLetter CoverLetter @relation(fields: [coverLetterId], references: [id])
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  coverLetter CoverLetter @relation(fields: [coverLetterId], references: [id], onDelete: Cascade)
 }
 
 enum Role {
   USER
   ADMIN
+  COMPANY
 }
 enum AppStatus {
   APPLIED

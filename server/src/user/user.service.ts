@@ -7,7 +7,7 @@ export class UserService {
   constructor(private prisma: PrismaService) {}
   async create(data: Prisma.UserCreateInput): Promise<User> {
     return this.prisma.user.create({
-      data,
+      data
     });
   }
   async findAll(params: {

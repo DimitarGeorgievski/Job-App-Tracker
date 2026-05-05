@@ -12,6 +12,7 @@ import { ApplicationModule } from './application/application.module';
 import { ConfigModule } from '@nestjs/config';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { CoverLetterModule } from './cover-letter/cover-letter.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { CoverLetterModule } from './cover-letter/cover-letter.module';
     ApplicationModule,
     CloudinaryModule,
     CoverLetterModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService,UserService,PrismaService],

@@ -20,16 +20,16 @@ export class ApplicationService {
             id: data.userId,
           },
         },
-        // coverLetters: {
-        //   connect: {
-        //     id: data.coverLetterId,
-        //   },
-        // },
-        // Analytics: {
-        //   connect: {
-        //     id: data.analyticsId,
-        //   },
-        // },
+        coverLetters: {
+          connect: {
+            id: data.coverLetterId,
+          },
+        },
+        Analytics: {
+          connect: {
+            id: data.analyticsId,
+          },
+        },
         job: {
           connect: {
             id: data.jobId,
@@ -50,7 +50,7 @@ export class ApplicationService {
     take?: number;
     where?: Prisma.ApplicationWhereInput;
     orderBy?: Prisma.ApplicationOrderByWithRelationInput;
-  }): Promise<Application[]> {
+  } = {}): Promise<Application[]> {
     const { orderBy, skip, take, where } = params;
     return await this.prisma.application.findMany({
       skip,

@@ -8,6 +8,7 @@ import { CoverLetter, Prisma } from 'generated/prisma/client';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { CreateCoverLetterDto } from './dto/create-cover-letter.dto';
 import { UpdateCoverLetterDto } from './dto/update-cover-letter.dto';
+import { MultipartFile } from '@fastify/multipart';
 
 @Injectable()
 export class CoverLetterService {
@@ -15,24 +16,37 @@ export class CoverLetterService {
     private prisma: PrismaService,
     private cloudinaryService: CloudinaryService,
   ) {}
-  async create(
+  async createTextCoverLetter(data: CreateCoverLetterDto, userId: number) {
+    if(data.fileURL || data.filePublicId) throw new BadRequestException("Cannot send file")
+    return await this.prisma.coverLetter.create({
+      data: {
+        processed: data.processed,
+        result: data.result,
+        content: data.content,
+        user: {
+          connect: {
+            id: Number(userId),
+          },
+        },
+        application: {
+          connect: { id: Number(data.applicationId) },
+        },
+      },
+    });
+  }
+  async createFileCoverLetter(
     data: CreateCoverLetterDto,
     userId: number,
-    file?: Express.Multer.File,
+    file: MultipartFile,
   ) {
-    if (!data.content && !file) {
-      throw new BadRequestException('Either content or file must be provided');
-    }
-    if (data.content && file) {
+    if (data.content) {
       throw new BadRequestException('Cannot send both content and file');
     }
     let fileURL: string | null = null;
     let filePublicId: string | null = null;
-    if (file) {
-      const uploadedFile = await this.cloudinaryService.uploadFile(file);
-      fileURL = uploadedFile.secure_url;
-      filePublicId = uploadedFile.public_id;
-    }
+    const uploadedFile = await this.cloudinaryService.uploadFile(file);
+    fileURL = uploadedFile.secure_url;
+    filePublicId = uploadedFile.public_id;
     return await this.prisma.coverLetter.create({
       data: {
         processed: data.processed,
@@ -51,12 +65,14 @@ export class CoverLetterService {
       },
     });
   }
-  async findAll(params: {
-    skip?: number;
-    take?: number;
-    where?: Prisma.CoverLetterWhereInput;
-    orderBy?: Prisma.CoverLetterOrderByWithRelationInput;
-  } = {}): Promise<CoverLetter[]> {
+  async findAll(
+    params: {
+      skip?: number;
+      take?: number;
+      where?: Prisma.CoverLetterWhereInput;
+      orderBy?: Prisma.CoverLetterOrderByWithRelationInput;
+    } = {},
+  ): Promise<CoverLetter[]> {
     const { skip, orderBy, take, where } = params;
     return await this.prisma.coverLetter.findMany({
       skip,
@@ -72,11 +88,7 @@ export class CoverLetterService {
     });
   }
 
-  async update(
-    id: number,
-    data: UpdateCoverLetterDto,
-    file?: Express.Multer.File,
-  ) {
+  async update(id: number, data: UpdateCoverLetterDto, file?: MultipartFile) {
     if (!data.content && !file) {
       throw new BadRequestException('Either content or file must be provided');
     }

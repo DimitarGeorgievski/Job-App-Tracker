@@ -10,6 +10,8 @@ import {
   UploadedFile,
   ParseFilePipeBuilder,
   ValidationPipe,
+  Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { CoverLetterService } from './cover-letter.service';
 import { CreateCoverLetterDto } from './dto/create-cover-letter.dto';
@@ -18,34 +20,33 @@ import {
   CoverLetterOrderByWithRelationInput,
   CoverLetterWhereUniqueInput,
 } from 'generated/prisma/models';
+import type { FastifyRequest } from 'fastify';
 import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('cover-letter')
 export class CoverLetterController {
   constructor(private readonly coverLetterService: CoverLetterService) {}
 
-  @Post(':userId')
-  @UseInterceptors(FileInterceptor('file'))
-  create(
+  @Post('/text/:userId')
+  async createTextCoverLetter(
     @Body(new ValidationPipe({ transform: true })) data: CreateCoverLetterDto,
     @Param('userId') userId: string,
-    @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addFileTypeValidator({
-          fileType: /(pdf|doc|docx)/,
-          errorMessage: "Your file must be one of the following formats."
-        })
-        .addMaxSizeValidator({
-          maxSize: 1024 * 1024,
-          errorMessage: "Your file is too big."
-        })
-        .build({
-          fileIsRequired: false
-        }),
-    )
-    file?: Express.Multer.File,
   ) {
-    return this.coverLetterService.create(data, Number(userId), file);
+    return this.coverLetterService.createTextCoverLetter(data, Number(userId));
+  }
+  @Post('/file/:userId')
+  async createFileCoverLetter(
+    @Body(new ValidationPipe({ transform: true })) data: CreateCoverLetterDto,
+    @Req() req: FastifyRequest,
+    @Param('userId') userId: string,
+  ) {
+    const file = await req.file();
+    if (!file) throw new BadRequestException('file is required');
+    return this.coverLetterService.createFileCoverLetter(
+      data,
+      Number(userId),
+      file,
+    );
   }
 
   @Get()

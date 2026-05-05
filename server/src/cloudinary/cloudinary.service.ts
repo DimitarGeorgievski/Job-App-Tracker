@@ -2,10 +2,11 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { v2 as cloudinary, DeleteApiResponse } from 'cloudinary';
 import streamifier from 'streamifier';
 import { CloudinaryUploadResponse } from './types/cloudinary.types';
+import { MultipartFile } from '@fastify/multipart';
 
 @Injectable()
 export class CloudinaryService {
-  uploadFile(file: Express.Multer.File): Promise<CloudinaryUploadResponse> {
+  uploadFile(file: MultipartFile): Promise<CloudinaryUploadResponse> {
     return new Promise<CloudinaryUploadResponse>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         (error, result) => {
@@ -14,7 +15,7 @@ export class CloudinaryService {
           resolve(result);
         },
       );
-      streamifier.createReadStream(file.buffer).pipe(uploadStream);
+      file.file.pipe(uploadStream);
     });
   }
   deleteFile(publicId: string): Promise<DeleteApiResponse> {
