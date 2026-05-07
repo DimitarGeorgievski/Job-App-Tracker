@@ -13,8 +13,6 @@ export class CreateCoverLetterDto {
   @IsString()
   filePublicId?: string;
   @IsOptional()
-  processed?: boolean;
-  @IsOptional()
   result?: string;
   @Type(() => Number)
   @IsInt()

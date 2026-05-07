@@ -21,9 +21,8 @@ import {
   CoverLetterWhereUniqueInput,
 } from 'generated/prisma/models';
 import type { FastifyRequest } from 'fastify';
-import { FileInterceptor } from '@nestjs/platform-express';
 
-@Controller('cover-letter')
+@Controller('cover-letters')
 export class CoverLetterController {
   constructor(private readonly coverLetterService: CoverLetterService) {}
 
@@ -36,12 +35,15 @@ export class CoverLetterController {
   }
   @Post('/file/:userId')
   async createFileCoverLetter(
-    @Body(new ValidationPipe({ transform: true })) data: CreateCoverLetterDto,
     @Req() req: FastifyRequest,
     @Param('userId') userId: string,
   ) {
     const file = await req.file();
     if (!file) throw new BadRequestException('file is required');
+    const data = {
+      applicationId: Number((file.fields.applicationId as any)?.value),
+      result: (file.fields.result as any)?.value,
+    } as CreateCoverLetterDto;
     return this.coverLetterService.createFileCoverLetter(
       data,
       Number(userId),

@@ -21,7 +21,7 @@ import { RolesGuard } from 'src/roles/roles.guard';
 import { Roles } from 'src/roles/roles.decorator';
 
 @UseGuards(AuthGuard,RolesGuard)
-@Controller('application')
+@Controller('applications')
 export class ApplicationController {
   constructor(private readonly applicationService: ApplicationService) {}
   @Roles(Role.USER)

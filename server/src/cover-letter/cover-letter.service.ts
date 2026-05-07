@@ -20,7 +20,6 @@ export class CoverLetterService {
     if(data.fileURL || data.filePublicId) throw new BadRequestException("Cannot send file")
     return await this.prisma.coverLetter.create({
       data: {
-        processed: data.processed,
         result: data.result,
         content: data.content,
         user: {
@@ -49,9 +48,7 @@ export class CoverLetterService {
     filePublicId = uploadedFile.public_id;
     return await this.prisma.coverLetter.create({
       data: {
-        processed: data.processed,
         result: data.result,
-        content: data.content,
         fileURL: fileURL,
         filePublicId: filePublicId,
         user: {
