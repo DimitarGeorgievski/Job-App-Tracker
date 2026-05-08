@@ -10,6 +10,8 @@ import { ConfigService } from '@nestjs/config';
 import { CredentialsDto } from './dto/Credentials.dto';
 import { UserService } from 'src/user/user.service';
 import { Prisma, Role } from 'generated/prisma/client';
+import { createCompanyDto } from './dto/create-company.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class AuthService {
@@ -17,6 +19,7 @@ export class AuthService {
     private usersService: UserService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private prisma: PrismaService,
   ) {}
 
   async registerUser(userData: Prisma.UserCreateInput) {
@@ -28,6 +31,38 @@ export class AuthService {
     userData.password = hashedPassword;
     await this.usersService.create(userData);
   }
+  async registerCompany(data: createCompanyDto) {
+    const userExists = await this.usersService.findByEmail(data.email);
+    if (userExists) throw new BadRequestException('User already exists');
+    const hashedPassword = await hash(data.password, 8);
+    return await this.prisma.$transaction(async (transaction) => {
+      const user = await transaction.user.create({
+        data: {
+          email: data.email,
+          password: hashedPassword,
+          role: data.role,
+        },
+      });
+      const company = await transaction.company.create({
+        data: {
+          companyName: data.companyName,
+          industry: data.industry,
+          description: data.description,
+          location: data.location,
+          website: data.website,
+          user: {
+            connect: {
+              id: user.id,
+            },
+          },
+        },
+      });
+      return {
+        user,
+        company,
+      };
+    });
+  }
   async loginUser(credentials: CredentialsDto) {
     const foundUser = await this.usersService.findByEmail(credentials.email);
     if (!foundUser) throw new UnauthorizedException('invalid credentials');
@@ -37,7 +72,10 @@ export class AuthService {
     );
     if (!isPasswordValid)
       throw new UnauthorizedException('invalid credentials');
-    const token = await this.jwtService.signAsync({ userId: foundUser.id, role: foundUser.role });
+    const token = await this.jwtService.signAsync({
+      userId: foundUser.id,
+      role: foundUser.role,
+    });
     const refreshToken = await this.jwtService.signAsync(
       { userId: foundUser.id, role: foundUser.role },
       {

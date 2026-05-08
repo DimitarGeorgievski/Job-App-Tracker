@@ -16,14 +16,30 @@ datasource db {
 model User {
   id  Int  @default(autoincrement()) @id
   email String @unique
-  name String 
+  firstName String?
+  lastName String?
+  description String?
+  skills String[] 
   password String
   role Role
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   applications Application[]
   coverLetters CoverLetter[]
+  company Company?
   refreshTokens String[]
+}
+
+model Company {
+  id Int @id @default(autoincrement())
+  companyName String
+  website String?
+  description String
+  location String
+  industry String
+  userId Int @unique
+  user User @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
 }
 
 model Job{

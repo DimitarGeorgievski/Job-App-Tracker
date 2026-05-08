@@ -11,6 +11,7 @@ import { AuthService } from './auth.service';
 import { type Response } from 'express';
 import { CredentialsDto } from './dto/Credentials.dto';
 import { CreateUserDto } from 'src/user/dto/create-user.dto';
+import { createCompanyDto } from './dto/create-company.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -19,6 +20,10 @@ export class AuthController {
   @Post('register')
   registerUser(@Body() userData: CreateUserDto) {
     return this.authService.registerUser(userData);
+  }
+  @Post('register/company')
+  registerCompany(@Body() data: createCompanyDto) {
+    return this.authService.registerUser(data);
   }
 
   @HttpCode(HttpStatus.OK)
