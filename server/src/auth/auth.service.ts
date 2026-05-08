@@ -29,19 +29,14 @@ export class AuthService {
       throw new ForbiddenException('admin user cannot be created 😉😘');
     const hashedPassword = await hash(userData.password, 8);
     userData.password = hashedPassword;
-    await this.usersService.create(userData);
+    return await this.usersService.create(userData);
   }
   async registerCompany(data: createCompanyDto) {
-    const userExists = await this.usersService.findByEmail(data.email);
-    if (userExists) throw new BadRequestException('User already exists');
-    const hashedPassword = await hash(data.password, 8);
     return await this.prisma.$transaction(async (transaction) => {
-      const user = await transaction.user.create({
-        data: {
-          email: data.email,
-          password: hashedPassword,
-          role: data.role,
-        },
+      const user = await this.registerUser({
+        email: data.email,
+        password: data.password,
+        role: Role.COMPANY
       });
       const company = await transaction.company.create({
         data: {
