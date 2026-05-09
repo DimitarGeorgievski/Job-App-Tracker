@@ -21,9 +21,15 @@ async function bootstrap() {
   app.register(Multipart, {
     limits: {
       fileSize: 1024 * 1024,
-    }
+    },
   });
   app.setGlobalPrefix('/app');
-  await app.listen(process.env.PORT ?? 3000);
+  app.enableCors({
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    origin: 'http://localhost:3001',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
+  await app.listen(3000, '0.0.0.0');
 }
 bootstrap();

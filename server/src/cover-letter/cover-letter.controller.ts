@@ -12,6 +12,7 @@ import {
   ValidationPipe,
   Req,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { CoverLetterService } from './cover-letter.service';
 import { CreateCoverLetterDto } from './dto/create-cover-letter.dto';
@@ -21,7 +22,12 @@ import {
   CoverLetterWhereUniqueInput,
 } from 'generated/prisma/models';
 import type { FastifyRequest } from 'fastify';
+import { AuthGuard } from 'src/auth/auth.guard';
+import { RolesGuard } from 'src/roles/roles.guard';
+import { Roles } from 'src/roles/roles.decorator';
+import { Role } from 'generated/prisma/enums';
 
+@UseGuards(AuthGuard,RolesGuard)
 @Controller('cover-letters')
 export class CoverLetterController {
   constructor(private readonly coverLetterService: CoverLetterService) {}
@@ -50,7 +56,7 @@ export class CoverLetterController {
       file,
     );
   }
-
+  @Roles(Role.ADMIN)
   @Get()
   findAll(
     @Param('params')
@@ -63,7 +69,8 @@ export class CoverLetterController {
   ) {
     return this.coverLetterService.findAll(params);
   }
-
+  
+  @Roles(Role.COMPANY)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.coverLetterService.findOne(+id);

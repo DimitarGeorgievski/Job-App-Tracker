@@ -23,7 +23,7 @@ export class AuthController {
   }
   @Post('register/company')
   registerCompany(@Body() data: createCompanyDto) {
-    return this.authService.registerUser(data);
+    return this.authService.registerCompany(data);
   }
 
   @HttpCode(HttpStatus.OK)

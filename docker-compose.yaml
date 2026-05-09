@@ -1,0 +1,42 @@
+services:
+  client:
+    build:
+      context: ./client
+    ports:
+      - '3001:3001'
+    depends_on:
+      - server
+    environment:
+      NEXT_PUBLIC_API_URL: http://server:3000/app
+
+  server:
+    build:
+      context: ./server
+    ports:
+      - '3000:3000'
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env
+
+  postgres:
+    image: postgres:16
+    restart: always
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    restart: always
+    ports:
+      - '6379:6379'
+
+volumes:
+  postgres_data:

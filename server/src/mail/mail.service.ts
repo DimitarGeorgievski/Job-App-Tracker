@@ -6,7 +6,7 @@ import "dotenv/config";
 export class MailService {
   async sendFollowUpReminder(
     toEmail: string,
-    userName: string,
+    userName: string | null,
     jobTitle: string,
   ) {
     return emailjs.send(

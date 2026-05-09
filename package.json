@@ -1,0 +1,10 @@
+{
+  "name": "jobtrackerapp",
+  "scripts": {
+    "start": "docker-compose -f docker-compose.yaml up",
+    "start:dev": "docker-compose -f docker-compose.dev.yaml up --build",
+    "stop": "docker-compose -f docker-compose.yaml down",
+    "stop:dev": "docker-compose -f docker-compose.dev.yaml down",
+    "stop:clean": "docker-compose -f docker-compose.dev.yaml down -v"
+  }
+}

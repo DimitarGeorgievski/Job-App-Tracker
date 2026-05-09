@@ -12,8 +12,7 @@ export class CreateUserDto {
   @IsEnum(Role)
   role: Role
   @IsString()
-  @MinLength(2)
-  name: string;
+  firstName: string;
   @IsString()
   @MinLength(6)
   password: string;

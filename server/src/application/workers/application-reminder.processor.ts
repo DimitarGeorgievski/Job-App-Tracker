@@ -32,7 +32,7 @@ export class ApplicationReminderProcessor extends WorkerHost {
     });
     await this.mailService.sendFollowUpReminder(
       app.user.email,
-      app.user.name,
+      app.user.firstName,
       app.job.title,
     );
   }
