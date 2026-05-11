@@ -165,7 +165,6 @@ export default function LoginPage() {
                       onBlur={field.handleBlur}
                       className="w-full px-4 py-2 border border-[#c1c6d4] rounded-lg bg-white text-base text-[#1b1c1c] outline-none focus:border-[#004e99] focus:ring-2 focus:ring-[#004e99]/20 transition-all"
                     />
-                    {/* Error порака */}
                     {field.state.meta.isTouched &&
                       field.state.meta.errors.length > 0 && (
                         <span className="text-xs text-[#ba1a1a] mt-0.5">
