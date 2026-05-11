@@ -90,10 +90,10 @@ export default function LoginPage() {
                   <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
                   <polyline points="17 6 23 6 23 12" />
                 </svg>
-                <div className="font-bold">Career Tracking</div>
-                <div className="text-white/60">
+                <p className="font-bold">Career Tracking</p>
+                <p className="text-white/60">
                   Visualize your path forward.
-                </div>
+                </p>
               </div>
               <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg p-4">
                 <svg
@@ -111,14 +111,14 @@ export default function LoginPage() {
                   <line x1="12" y1="3" x2="12" y2="9" />
                   <line x1="12" y1="15" x2="12" y2="21" />
                 </svg>
-                <div className="font-bold">Network Smart</div>
-                <div className="text-white/60">Connect with intent.</div>
+                <p className="font-bold">Network Smart</p>
+                <p className="text-white/60">Connect with intent.</p>
               </div>
             </div>
           </div>
-          <div className="absolute bottom-10 left-10 texl-2xl text-white/40">
+          <p className="absolute bottom-10 left-10 texl-2xl text-white/40">
             © 2024 CareerPath Platform. Professional Edition.
-          </div>
+          </p>
         </section>
         <section className="flex flex-1 flex-col justify-center items-center px-6 bg-white">
           <div className="flex lg:hidden flex-col items-center gap-2 mb-8">
@@ -182,7 +182,7 @@ export default function LoginPage() {
                         Password
                       </label>
                       <Link
-                        href="/forgot-password"
+                        href="/forget-password"
                         className="text-xs font-semibold text-[#004e99] hover:underline"
                       >
                         Forgot password?
