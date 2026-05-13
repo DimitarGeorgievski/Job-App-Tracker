@@ -1,13 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { Job, Prisma } from 'generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { CreateJobDto } from './dto/create-job.dto';
 
 @Injectable()
 export class JobService {
   constructor(private prisma: PrismaService) {}
-  async create(data: Prisma.JobCreateInput): Promise<Job> {
+  async create(data: CreateJobDto): Promise<Job> {
     return await this.prisma.job.create({
-      data
+      data: {
+        description: data.description,
+        jobType: data.jobType,
+        title: data.title,
+        location: data.location,
+        company: {
+          connect: {
+            id: data.companyId
+          }
+        }
+      }
     });
   }
 

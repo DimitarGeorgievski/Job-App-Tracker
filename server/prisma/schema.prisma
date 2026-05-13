@@ -40,6 +40,7 @@ model Company {
   userId Int @unique
   user User @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+  job Job?
 }
 
 model Job{
@@ -47,8 +48,11 @@ model Job{
   title String
   description String
   location String?
+  jobType JobType
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  companyId Int @unique
+  company Company @relation(fields: [companyId], references: [id])
   applications Application[]
 }
 
@@ -107,4 +111,9 @@ enum AppStatus {
   REJECTED
   ACCEPTED
   FOLLOW_UP_DUE
+}
+enum JobType {
+  REMOTE
+  ONSITE
+  HYBRID
 }

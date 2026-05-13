@@ -1,4 +1,11 @@
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
+import { JobType } from 'generated/prisma/enums';
 
 export class CreateJobDto {
   @IsString()
@@ -10,4 +17,8 @@ export class CreateJobDto {
   @IsOptional()
   @IsString()
   location?: string;
+  @IsNumber()
+  companyId: number;
+  @IsEnum(JobType)
+  jobType: JobType;
 }
