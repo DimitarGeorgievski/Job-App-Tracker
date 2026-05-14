@@ -1,5 +1,6 @@
 "use client";
 import { api } from "@/lib/axios";
+import { queryClient } from "@/lib/queryClient";
 import { loginSchema } from "@/lib/schemas/auth.schema";
 import { useForm } from "@tanstack/react-form";
 import axios from "axios";
@@ -23,10 +24,11 @@ export default function LoginPage() {
     onSubmit: async ({ value }) => {
       setServerError("");
       try {
-        await api.post("/auth/login", {
+        const { data: user } = await api.post("/auth/login", {
           email: value.email,
           password: value.password,
         });
+        queryClient.setQueryData(["user"], user);
         router.push("/");
       } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -91,9 +93,7 @@ export default function LoginPage() {
                   <polyline points="17 6 23 6 23 12" />
                 </svg>
                 <p className="font-bold">Career Tracking</p>
-                <p className="text-white/60">
-                  Visualize your path forward.
-                </p>
+                <p className="text-white/60">Visualize your path forward.</p>
               </div>
               <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg p-4">
                 <svg
