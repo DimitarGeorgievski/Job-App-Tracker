@@ -19,7 +19,9 @@ model User {
   firstName String?
   lastName String?
   description String?
-  skills String[] 
+  skills String[]
+  logoPublicId String?
+  logoURL String?
   password String
   role Role
   createdAt DateTime @default(now())

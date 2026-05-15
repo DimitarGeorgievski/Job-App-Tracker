@@ -1,7 +1,7 @@
 "use client";
-import { api } from "@/lib/axios";
-import { queryClient } from "@/lib/queryClient";
-import { loginSchema } from "@/lib/schemas/auth.schema";
+import { api } from "@/app/lib/axios";
+import { queryClient } from "@/app/lib/queryClient";
+import { loginSchema } from "@/app/lib/schemas/auth.schema";
 import { useForm } from "@tanstack/react-form";
 import axios from "axios";
 import Image from "next/image";
@@ -33,7 +33,8 @@ export default function LoginPage() {
       } catch (error) {
         if (axios.isAxiosError(error)) {
           setServerError(
-            error.response?.data?.message || "There is a problem logging, try later",
+            error.response?.data?.message ||
+              "There is a problem logging, try later",
           );
         }
       }

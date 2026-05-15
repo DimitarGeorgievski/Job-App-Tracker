@@ -1,12 +1,12 @@
 "use client";
- 
+
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "@tanstack/react-form";
-import { api } from "@/lib/axios";
+import { api } from "@/app/lib/axios";
 import axios from "axios";
-import { forgotPasswordSchema } from "@/lib/schemas/forgot-password.schema";
- 
+import { forgotPasswordSchema } from "@/app/lib/schemas/forgot-password.schema";
+
 export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState("");
@@ -25,13 +25,14 @@ export default function ForgotPasswordPage() {
       } catch (error) {
         if (axios.isAxiosError(error)) {
           setServerError(
-            error.response?.data?.message || "There is an error while trying to change password"
+            error.response?.data?.message ||
+              "There is an error while trying to change password",
           );
         }
       }
     },
   });
- 
+
   return (
     <div className="min-h-screen flex flex-col bg-[#fbf9f8] text-[#1b1c1c]">
       <main className="flex-1 flex flex-col items-center justify-center px-4">
@@ -89,9 +90,7 @@ export default function ForgotPasswordPage() {
                     {serverError}
                   </p>
                 )}
-                <form.Subscribe
-                  selector={(s) => [s.canSubmit, s.isSubmitting]}
-                >
+                <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting]}>
                   {([canSubmit, isSubmitting]) => (
                     <button
                       type="submit"
@@ -107,7 +106,14 @@ export default function ForgotPasswordPage() {
           ) : (
             <div className="text-center py-4">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5">
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#16a34a"
+                  strokeWidth="2.5"
+                >
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
@@ -128,7 +134,14 @@ export default function ForgotPasswordPage() {
               href="/login"
               className="inline-flex items-center gap-1 text-sm font-semibold text-[#0a66c2] hover:underline transition-all"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <line x1="19" y1="12" x2="5" y2="12" />
                 <polyline points="12 19 5 12 12 5" />
               </svg>

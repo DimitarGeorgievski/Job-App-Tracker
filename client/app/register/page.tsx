@@ -1,6 +1,6 @@
 "use client";
-import { api } from "@/lib/axios";
-import { companySchema, userSchema } from "@/lib/schemas/register.schema";
+import { api } from "@/app/lib/axios";
+import { companySchema, userSchema } from "@/app/lib/schemas/register.schema";
 import { useForm } from "@tanstack/react-form";
 import axios from "axios";
 import Image from "next/image";
@@ -20,6 +20,7 @@ export default function RegisterPage() {
       description: "",
       email: "",
       password: "",
+      logo: null as File | null,
     },
     validators: { onChange: companySchema },
     onSubmit: async ({ value }) => {
@@ -34,6 +35,7 @@ export default function RegisterPage() {
           description: value.description,
           email: value.email,
           password: value.password,
+          logo: value.logo,
         });
       } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -431,7 +433,6 @@ export default function RegisterPage() {
                           onChange={(e) => field.handleChange(e.target.value)}
                           onBlur={field.handleBlur}
                         />
-
                         {field.state.meta.isTouched &&
                           field.state.meta.errors.length > 0 && (
                             <span className="text-xs pl-1 text-[#ba1a1a] mt-0.5">
@@ -455,7 +456,6 @@ export default function RegisterPage() {
                         onChange={(e) => field.handleChange(e.target.value)}
                         onBlur={field.handleBlur}
                       />
-
                       {field.state.meta.isTouched &&
                         field.state.meta.errors.length > 0 && (
                           <span className="text-xs pl-1 text-[#ba1a1a] mt-0.5">
@@ -561,7 +561,6 @@ export default function RegisterPage() {
                           )}
                         </button>
                       </div>
-
                       {field.state.meta.isTouched &&
                         field.state.meta.errors.length > 0 && (
                           <span className="text-xs pl-1 text-[#ba1a1a] mt-0.5">
@@ -570,6 +569,142 @@ export default function RegisterPage() {
                         )}
                     </div>
                   )}
+                </companyForm.Field>
+                <companyForm.Field name="logo">
+                  {(field) => {
+                    const preview = field.state.value
+                      ? URL.createObjectURL(field.state.value)
+                      : null;
+                    return (
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="relative">
+                          <label
+                            htmlFor="logo"
+                            className="w-20 h-20 cursor-pointer rounded-xl border-2 border-dashed border-[#c1c6d4] overflow-hidden flex items-center justify-center bg-[#f5f3f3] hover:border-[#004e99] transition-colors"
+                          >
+                            {preview ? (
+                              <Image
+                                src={preview}
+                                fill
+                                sizes=""
+                                alt="Company logo preview"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <svg
+                                width="40"
+                                height="40"
+                                viewBox="0 0 64 64"
+                                fill="none"
+                              >
+                                <rect
+                                  width="64"
+                                  height="64"
+                                  rx="8"
+                                  fill="#efeded"
+                                />
+                                <rect
+                                  x="16"
+                                  y="20"
+                                  width="32"
+                                  height="28"
+                                  rx="2"
+                                  fill="#c1c6d4"
+                                />
+                                <rect
+                                  x="22"
+                                  y="28"
+                                  width="6"
+                                  height="6"
+                                  rx="1"
+                                  fill="#ffffff"
+                                />
+                                <rect
+                                  x="36"
+                                  y="28"
+                                  width="6"
+                                  height="6"
+                                  rx="1"
+                                  fill="#ffffff"
+                                />
+                                <rect
+                                  x="27"
+                                  y="36"
+                                  width="10"
+                                  height="12"
+                                  rx="1"
+                                  fill="#ffffff"
+                                />
+                                <rect
+                                  x="12"
+                                  y="26"
+                                  width="8"
+                                  height="22"
+                                  rx="2"
+                                  fill="#c1c6d4"
+                                />
+                                <rect
+                                  x="44"
+                                  y="26"
+                                  width="8"
+                                  height="22"
+                                  rx="2"
+                                  fill="#c1c6d4"
+                                />
+                              </svg>
+                            )}
+                          </label>
+                          <label
+                            htmlFor="logo"
+                            className="absolute -bottom-2 -right-2 bg-[#004e99] text-white rounded-full p-1.5 cursor-pointer hover:bg-[#00468a] transition-colors"
+                          >
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                            >
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="17 8 12 3 7 8" />
+                              <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                          </label>
+                          <input
+                            id="logo"
+                            type="file"
+                            accept="image/png, image/jpeg, image/webp"
+                            className="hidden"
+                            onChange={(e) =>
+                              field.handleChange(e.target.files?.[0] ?? null)
+                            }
+                            onBlur={field.handleBlur}
+                          />
+                        </div>
+                        <p className="text-sm pl-1 text-[#414752]">
+                          {field.state.value
+                            ? field.state.value.name
+                            : "Upload company logo"}
+                        </p>
+                        {field.state.value && (
+                          <button
+                            type="button"
+                            onClick={() => field.handleChange(null)}
+                            className="text-sm cursor-pointer pl-1 text-[#ba1a1a] hover:underline"
+                          >
+                            Remove
+                          </button>
+                        )}
+                        {field.state.meta.isTouched &&
+                          field.state.meta.errors.length > 0 && (
+                            <span className="text-sm pl-1 text-[#ba1a1a]">
+                              {field.state.meta.errors[0]?.message}
+                            </span>
+                          )}
+                      </div>
+                    );
+                  }}
                 </companyForm.Field>
                 {serverError && (
                   <p className="text-sm text-[#ba1a1a] bg-[#ffdad6] px-4 py-2.5 rounded-lg">
