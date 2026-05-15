@@ -33,7 +33,7 @@ export default function LoginPage() {
       } catch (error) {
         if (axios.isAxiosError(error)) {
           setServerError(
-            error.response?.data?.message || "Invalid credentials",
+            error.response?.data?.message || "There is a problem logging, try later",
           );
         }
       }

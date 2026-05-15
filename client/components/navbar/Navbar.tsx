@@ -1,6 +1,7 @@
 // components/navbar/Navbar.tsx
 "use client";
 
+import { User } from "@/lib/hooks/user";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -11,6 +12,7 @@ interface NavbarProps {
 export default function Navbar({ onSearch }: NavbarProps) {
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
+  const { data: user } = User();
   function handleSearch() {
     onSearch?.(query, location);
   }
@@ -134,21 +136,42 @@ export default function Navbar({ onSearch }: NavbarProps) {
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
             </button>
-            {/* <button className="text-[#414752] hover:bg-[#e9e8e7] p-1.5 rounded-full transition-colors">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <line x1="23" y1="11" x2="17" y2="11" />
-                <line x1="20" y1="8" x2="20" y2="14" />
-              </svg>
-            </button>
-            <div className="w-8 h-8 rounded-full bg-[#e9e8e7] overflow-hidden border border-[#c1c6d4] flex items-center justify-center cursor-pointer">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#414752" strokeWidth="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            </div> */}
-            <button className="bg-primary text-on-primary font-label-md px-lg py-sm rounded-full hover:bg-primary/90 transition-all whitespace-nowrap">Create Job</button>
+            {user?.role === "USER" ? (
+              <>
+                <button className="text-[#414752] hover:bg-[#e9e8e7] p-1.5 rounded-full transition-colors">
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <line x1="23" y1="11" x2="17" y2="11" />
+                    <line x1="20" y1="8" x2="20" y2="14" />
+                  </svg>
+                </button>
+                <button className="w-8 h-8 rounded-full bg-[#e9e8e7] overflow-hidden border border-[#c1c6d4] flex items-center justify-center cursor-pointer">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#414752"
+                    strokeWidth="2"
+                  >
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </button>
+              </>
+            ) : (
+              <button className="bg-primary text-on-primary font-label-md px-lg py-sm rounded-full hover:bg-primary/90 transition-all whitespace-nowrap">
+                Create Job
+              </button>
+            )}
           </div>
         </nav>
       </div>
