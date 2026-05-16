@@ -6,13 +6,13 @@ import {
   Post,
   Res,
   Headers,
+  Req,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { type Response } from 'express';
 import { CredentialsDto } from './dto/Credentials.dto';
 import { CreateUserDto } from 'src/user/dto/create-user.dto';
 import { createCompanyDto } from './dto/create-company.dto';
-import { type FastifyReply } from 'fastify';
+import { type FastifyRequest, type FastifyReply } from 'fastify';
 import '@fastify/cookie';
 
 @Controller('auth')
@@ -20,12 +20,30 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  registerUser(@Body() userData: CreateUserDto) {
-    return this.authService.registerUser(userData);
+  async registerUser(@Req() req: FastifyRequest) {
+    const file = await req.file();
+    const data = {
+      email: (file?.fields.email as any)?.value,
+      password: (file?.fields.password as any)?.value,
+      firstName: (file?.fields.firstName as any)?.value,
+      lastName: (file?.fields.lastName as any)?.value,
+      role: (file?.fields.role as any)?.value,
+    } as CreateUserDto;
+    return this.authService.registerUser(data, file ?? null);
   }
   @Post('register/company')
-  registerCompany(@Body() data: createCompanyDto) {
-    return this.authService.registerCompany(data);
+  async registerCompany(@Req() req: FastifyRequest) {
+    const file = await req.file();
+    const data = {
+      companyName: (file?.fields.companyName as any)?.value,
+      industry: (file?.fields.industry as any)?.value,
+      description: (file?.fields.description as any)?.value,
+      location: (file?.fields.location as any)?.value,
+      website: (file?.fields.website as any)?.value,
+      email: (file?.fields.email as any)?.value,
+      password: (file?.fields.password as any)?.value,
+    } as createCompanyDto;
+    return this.authService.registerCompany(data, file ?? null);
   }
 
   @HttpCode(HttpStatus.OK)

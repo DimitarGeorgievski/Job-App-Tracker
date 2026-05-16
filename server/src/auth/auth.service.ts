@@ -12,6 +12,8 @@ import { UserService } from 'src/user/user.service';
 import { Prisma, Role } from 'generated/prisma/client';
 import { createCompanyDto } from './dto/create-company.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
+import { MultipartFile } from '@fastify/multipart';
 
 @Injectable()
 export class AuthService {
@@ -20,24 +22,38 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private prisma: PrismaService,
+    private cloudinaryService: CloudinaryService,
   ) {}
 
-  async registerUser(userData: Prisma.UserCreateInput) {
+  async registerUser(
+    userData: Prisma.UserCreateInput,
+    file: MultipartFile | null,
+  ) {
     const userExists = await this.usersService.findByEmail(userData.email);
     if (userExists) throw new BadRequestException('User already exists');
     if (userData.role === Role.ADMIN)
       throw new ForbiddenException('admin user cannot be created 😉😘');
     const hashedPassword = await hash(userData.password, 8);
     userData.password = hashedPassword;
-    return await this.usersService.create(userData);
+    let logoURL: string | null = null;
+    let logoPublicId: string | null = null;
+    if (file) {
+      const uploaded = await this.cloudinaryService.uploadFile(file);
+      logoURL = uploaded.secure_url;
+      logoPublicId = uploaded.public_id;
+    }
+    return await this.usersService.create({...userData, logoURL, logoPublicId});
   }
-  async registerCompany(data: createCompanyDto) {
+  async registerCompany(data: createCompanyDto, file: MultipartFile | null) {
     return await this.prisma.$transaction(async (transaction) => {
-      const user = await this.registerUser({
-        email: data.email,
-        password: data.password,
-        role: Role.COMPANY
-      });
+      const user = await this.registerUser(
+        {
+          email: data.email,
+          password: data.password,
+          role: Role.COMPANY,
+        },
+        file,
+      );
       const company = await transaction.company.create({
         data: {
           companyName: data.companyName,
@@ -46,16 +62,11 @@ export class AuthService {
           location: data.location,
           website: data.website,
           user: {
-            connect: {
-              id: user.id,
-            },
+            connect: { id: user.id },
           },
         },
       });
-      return {
-        user,
-        company,
-      };
+      return { user, company };
     });
   }
   async loginUser(credentials: CredentialsDto) {

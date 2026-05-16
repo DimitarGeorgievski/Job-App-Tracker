@@ -1,18 +1,18 @@
-// components/navbar/Navbar.tsx
 "use client";
 
-import { User } from "@/lib/hooks/user";
+import { user } from "@/app/lib/models/user.model";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
 interface NavbarProps {
+  user?: user | null;
   onSearch?: (query: string, location: string) => void;
 }
 
-export default function Navbar({ onSearch }: NavbarProps) {
+export default function Navbar({ onSearch, user }: NavbarProps) {
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
-  const { data: user } = User();
   function handleSearch() {
     onSearch?.(query, location);
   }
@@ -73,7 +73,7 @@ export default function Navbar({ onSearch }: NavbarProps) {
           <div className="hidden lg:flex items-center gap-6">
             <Link
               href="/jobs"
-              className="flex flex-col items-center text-[#004e99] border-b-2 border-[#004e99] pt-1 pb-1 px-1"
+              className="flex flex-col items-center text-[#004e99] border-b-2 border-[#004e99] p-1"
             >
               <svg
                 width="24"
@@ -87,8 +87,8 @@ export default function Navbar({ onSearch }: NavbarProps) {
               <span className="text-xs font-semibold">Jobs</span>
             </Link>
             <Link
-              href="/network"
-              className="flex flex-col items-center text-[#414752] hover:bg-[#e9e8e7] px-1 pt-1 pb-1 rounded-lg transition-colors"
+              href="/in-work"
+              className="flex flex-col items-center text-[#414752] hover:bg-[#e9e8e7] p-1 rounded-lg transition-colors"
             >
               <svg
                 width="24"
@@ -106,8 +106,8 @@ export default function Navbar({ onSearch }: NavbarProps) {
               <span className="text-xs font-semibold">Network</span>
             </Link>
             <Link
-              href="/messaging"
-              className="flex flex-col items-center text-[#414752] hover:bg-[#e9e8e7] px-1 pt-1 pb-1 rounded-lg transition-colors"
+              href="/in-work"
+              className="flex flex-col items-center text-[#414752] hover:bg-[#e9e8e7] p-1 rounded-lg transition-colors"
             >
               <svg
                 width="24"
@@ -123,7 +123,10 @@ export default function Navbar({ onSearch }: NavbarProps) {
             </Link>
           </div>
           <div className="flex items-center gap-3 border-l border-[#c1c6d4] pl-6">
-            <button className="text-[#414752] hover:bg-[#e9e8e7] p-1.5 rounded-full transition-colors">
+            <Link
+              href={"/in-work"}
+              className="text-[#414752] hover:bg-[#e9e8e7] p-1.5 rounded-full transition-colors"
+            >
               <svg
                 width="24"
                 height="24"
@@ -135,10 +138,13 @@ export default function Navbar({ onSearch }: NavbarProps) {
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
-            </button>
+            </Link>
             {user?.role === "USER" ? (
               <>
-                <button className="text-[#414752] hover:bg-[#e9e8e7] p-1.5 rounded-full transition-colors">
+                <Link
+                  href={"/in-work"}
+                  className="text-[#414752] cursor-pointer hover:bg-[#e9e8e7] p-1.5 rounded-full transition-colors"
+                >
                   <svg
                     width="24"
                     height="24"
@@ -152,8 +158,11 @@ export default function Navbar({ onSearch }: NavbarProps) {
                     <line x1="23" y1="11" x2="17" y2="11" />
                     <line x1="20" y1="8" x2="20" y2="14" />
                   </svg>
-                </button>
-                <button className="w-8 h-8 rounded-full bg-[#e9e8e7] overflow-hidden border border-[#c1c6d4] flex items-center justify-center cursor-pointer">
+                </Link>
+                <Link
+                  href={"/in-work"}
+                  className="w-8 h-8 rounded-full bg-[#e9e8e7] overflow-hidden border border-[#c1c6d4] flex items-center justify-center cursor-pointer"
+                >
                   <svg
                     width="20"
                     height="20"
@@ -165,13 +174,38 @@ export default function Navbar({ onSearch }: NavbarProps) {
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                     <circle cx="12" cy="7" r="4" />
                   </svg>
-                </button>
+                </Link>
               </>
             ) : (
-              <button className="bg-primary text-on-primary font-label-md px-lg py-sm rounded-full hover:bg-primary/90 transition-all whitespace-nowrap">
+              <button className="bg-[#004e99] text-white text-sm font-semibold px-6 py-2 rounded-full hover:bg-[#004e99]/90 transition-all whitespace-nowrap cursor-pointer">
                 Create Job
               </button>
             )}
+            <Link href="/profile">
+              {user?.logoURL ? (
+                <Image
+                  src={user.logoURL}
+                  alt="user logo"
+                  width={32}
+                  height={32}
+                  className="w-8 h-8 rounded-full object-cover border border-[#c1c6d4]"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-[#e9e8e7] border border-[#c1c6d4] flex items-center justify-center">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#414752"
+                    strokeWidth="2"
+                  >
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
+              )}
+            </Link>
           </div>
         </nav>
       </div>

@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { v2 as cloudinary, DeleteApiResponse } from 'cloudinary';
-import streamifier from 'streamifier';
 import { CloudinaryUploadResponse } from './types/cloudinary.types';
 import { MultipartFile } from '@fastify/multipart';
 

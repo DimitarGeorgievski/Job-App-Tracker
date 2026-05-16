@@ -15,25 +15,30 @@ export class JobService {
         location: data.location,
         company: {
           connect: {
-            id: data.companyId
-          }
-        }
-      }
+            id: data.companyId,
+          },
+        },
+      },
     });
   }
 
-  async findAll(params: {
-    skip?: number;
-    take?: number;
-    where?: Prisma.JobWhereInput;
-    orderBy?: Prisma.JobOrderByWithRelationInput;
-  } = {}): Promise<Job[]> {
+  async findAll(
+    params: {
+      skip?: number;
+      take?: number;
+      where?: Prisma.JobWhereInput;
+      orderBy?: Prisma.JobOrderByWithRelationInput;
+    } = {},
+  ): Promise<Job[]> {
     const { skip, orderBy, take, where } = params;
     return await this.prisma.job.findMany({
       skip,
       take,
       where,
       orderBy,
+      include: {
+        company: true,
+      },
     });
   }
 

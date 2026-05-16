@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserModule } from 'src/user/user.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
+import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -21,7 +22,8 @@ import { PrismaModule } from 'src/prisma/prisma.module';
       inject: [ConfigService],
     }),
     UserModule,
-    PrismaModule
+    PrismaModule,
+    CloudinaryModule
   ],
   controllers: [AuthController],
   providers: [AuthService],

@@ -15,12 +15,23 @@ export const companySchema = z.object({
   industry: z.string().min(1, "Industry is required"),
   website: z.url("Enter valid url"),
   location: z.string().min(1, "Location is required"),
-  description: z.string().min(1, "Description is required").max(400, "Description is too Long"),
+  description: z
+    .string()
+    .min(1, "Description is required")
+    .max(400, "Description is too Long"),
   email: z.email("Enter valid email").min(1, "Email is required"),
   password: z
     .string()
     .min(1, "Password is required")
     .min(8, "Enter strong password"),
+  logo: z
+    .instanceof(File)
+    .refine((file) => file.size <= 1 * 1024 * 1024, "Max file size is 1MB")
+    .refine(
+      (file) => ["image/jpeg", "image/png", "image/webp"].includes(file.type),
+      "Only JPG, PNG and WEBP are allowed",
+    )
+    .nullable()
 });
 
 export type UserSchema = z.infer<typeof userSchema>;
