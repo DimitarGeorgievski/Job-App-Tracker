@@ -12,14 +12,14 @@ export default function JobCard({ job, onApply, onSave }: JobCardProps) {
   return (
     <article className="bg-white border border-[#c1c6d4] rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer group">
       <div className="flex gap-4">
-        <div className="w-12 h-12 bg-[#efeded] rounded border border-[#c1c6d4] shrink-0 overflow-hidden flex items-center justify-center">
-          {job.company.logoPublicId ? (
+        <div className="relative w-12 h-12 bg-[#efeded] rounded border border-[#c1c6d4] shrink-0 overflow-hidden flex items-center justify-center">
+          {job.company.user.logoURL ? (
             <Image
-              src={job.company.logoPublicId}
+              src={job.company.user.logoURL}
               fill
-              sizes=""
+              sizes="48px"
               alt={`${job.company.companyName} logo`}
-              className="w-full h-full object-cover"
+              className="object-cover"
             />
           ) : (
             <span className="text-lg font-bold text-[#414752]">
@@ -65,7 +65,7 @@ export default function JobCard({ job, onApply, onSave }: JobCardProps) {
           <div className="mt-6 flex items-center gap-4">
             <button
               onClick={() => onApply?.(job)}
-              className="bg-[#004e99] text-white text-sm font-semibold px-6 py-2 rounded-full hover:bg-[#004e99]/90 transition-all flex items-center gap-1"
+              className="bg-[#004e99] text-white cursor-pointer text-sm font-semibold px-6 py-2 rounded-full hover:bg-[#004e99]/90 transition-all flex items-center gap-1"
             >
               <svg
                 width="18"
@@ -79,7 +79,7 @@ export default function JobCard({ job, onApply, onSave }: JobCardProps) {
             </button>
             <button
               onClick={() => onSave?.(job)}
-              className="border border-[#004e99] text-[#004e99] text-sm font-semibold px-6 py-2 rounded-full hover:bg-[#004e99]/5 transition-all"
+              className="border border-[#004e99] text-[#004e99] cursor-pointer text-sm font-semibold px-6 py-2 rounded-full hover:bg-[#004e99]/5 transition-all"
             >
               Save
             </button>

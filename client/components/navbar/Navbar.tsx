@@ -122,7 +122,7 @@ export default function Navbar({ onSearch, user }: NavbarProps) {
               <span className="text-xs font-semibold">Messaging</span>
             </Link>
           </div>
-          <div className="flex items-center gap-3 border-l border-[#c1c6d4] pl-6">
+          <div className="flex items-center gap-3 border-l border-[#c1c6d4] pl-6 flex-nowrap">
             <Link
               href={"/in-work"}
               className="text-[#414752] hover:bg-[#e9e8e7] p-1.5 rounded-full transition-colors"
@@ -177,21 +177,25 @@ export default function Navbar({ onSearch, user }: NavbarProps) {
                 </Link>
               </>
             ) : (
-              <button className="bg-[#004e99] text-white text-sm font-semibold px-6 py-2 rounded-full hover:bg-[#004e99]/90 transition-all whitespace-nowrap cursor-pointer">
+              <Link
+                href={"/create-job"}
+                className="bg-[#004e99] text-white text-sm font-semibold px-6 py-2 rounded-full hover:bg-[#004e99]/90 transition-all whitespace-nowrap shrink-0 cursor-pointer"
+              >
                 Create Job
-              </button>
+              </Link>
             )}
-            <Link href="/profile">
+            <Link href="/profile" className="shrink-0">
               {user?.logoURL ? (
                 <Image
                   src={user.logoURL}
                   alt="user logo"
-                  width={32}
-                  height={32}
-                  className="w-8 h-8 rounded-full object-cover border border-[#c1c6d4]"
+                  width={40}
+                  height={40}
+                  sizes="40px"
+                  className="rounded-full object-cover border border-[#c1c6d4] w-10 h-10 shrink-0"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-[#e9e8e7] border border-[#c1c6d4] flex items-center justify-center">
+                <div className="w-10 h-10 shrink-0 rounded-full bg-[#e9e8e7] border border-[#c1c6d4] flex items-center justify-center">
                   <svg
                     width="20"
                     height="20"

@@ -21,29 +21,29 @@ import { Role } from 'generated/prisma/enums';
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
   @Post()
-  @Roles(Role.COMPANY)
+  @Roles([Role.COMPANY])
   create(@Body() data: CreateAnalyticsDto) {
     return this.analyticsService.create(data);
   }
 
   @Get()
-  @Roles(Role.ADMIN)
+  @Roles([Role.ADMIN])
   findAll() {
     return this.analyticsService.findAll();
   }
   @Get('company/:id')
-  @Roles(Role.COMPANY)
+  @Roles([Role.COMPANY])
   findAllForCompany(@Param('id') companyId: string) {
     return this.analyticsService.findAllForCompany(companyId);
   }
 
   @Get(':id')
-  @Roles(Role.COMPANY)
+  @Roles([Role.COMPANY])
   findOne(@Param('id') id: string) {
     return this.analyticsService.findOne(+id);
   }
 
-  @Roles(Role.COMPANY)
+  @Roles([Role.COMPANY])
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -53,7 +53,7 @@ export class AnalyticsController {
   }
 
   @Delete(':id')
-  @Roles(Role.COMPANY)
+  @Roles([Role.COMPANY])
   remove(@Param('id') id: string) {
     return this.analyticsService.remove(+id);
   }

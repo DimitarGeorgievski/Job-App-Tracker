@@ -29,17 +29,33 @@ export class JobService {
       where?: Prisma.JobWhereInput;
       orderBy?: Prisma.JobOrderByWithRelationInput;
     } = {},
-  ): Promise<Job[]> {
+  ): Promise<{ jobs: Job[]; total: number; totalPages: number }> {
     const { skip, orderBy, take, where } = params;
-    return await this.prisma.job.findMany({
-      skip,
-      take,
-      where,
-      orderBy,
-      include: {
-        company: true,
-      },
-    });
+    const [jobs, total] = await this.prisma.$transaction([
+      this.prisma.job.findMany({
+        skip,
+        take,
+        where,
+        orderBy,
+        include: {
+          company: {
+            include: {
+              user: {
+                select: {
+                  logoURL: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.job.count({ where }),
+    ]);
+    return {
+      jobs,
+      total,
+      totalPages: Math.ceil(total / (take ?? 10)),
+    };
   }
 
   async findOne(id: number): Promise<Job | null> {

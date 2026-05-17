@@ -24,13 +24,13 @@ import { Roles } from 'src/roles/roles.decorator';
 @Controller('applications')
 export class ApplicationController {
   constructor(private readonly applicationService: ApplicationService) {}
-  @Roles(Role.USER)
+  @Roles([Role.USER])
   @Post()
   create(@Body() data: CreateApplicationDto) {
     return this.applicationService.create(data);
   }
   @Get()
-  @Roles(Role.ADMIN)
+  @Roles([Role.ADMIN])
   findAll(
     @Param('params')
     params: {
@@ -42,22 +42,22 @@ export class ApplicationController {
   ): Promise<Application[] | null> {
     return this.applicationService.findAll(params);
   }
-  @Roles(Role.USER)
+  @Roles([Role.USER])
   @Get('user/:userId')
   findByUser(@Param('userId') userId: string) {
     return this.applicationService.findByUser(Number(userId));
   }
   @Get(':id')
-  @Roles(Role.USER)
+  @Roles([Role.USER])
   findOne(@Param('id') id: string) {
     return this.applicationService.findOne(Number(id));
   }
-  @Roles(Role.ADMIN)
+  @Roles([Role.ADMIN])
   @Patch(':id/status')
   updateStatus(@Param('id') id: string, @Body() data: UpdateStatusDto) {
     return this.applicationService.updateStatus(Number(id), data.status);
   }
-  @Roles(Role.ADMIN)
+  @Roles([Role.ADMIN])
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.applicationService.remove(Number(id));

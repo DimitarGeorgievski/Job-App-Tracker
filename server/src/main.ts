@@ -6,23 +6,25 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import Multipart from '@fastify/multipart';
+import fastifyCookie from '@fastify/cookie';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter(),
   );
+  await app.register(fastifyCookie);
+  await app.register(Multipart, {
+    limits: {
+      fileSize: 1024 * 1024,
+    },
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: false,
     }),
   );
-  app.register(Multipart, {
-    limits: {
-      fileSize: 1024 * 1024,
-    },
-  });
   app.setGlobalPrefix('/app');
   app.enableCors({
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],

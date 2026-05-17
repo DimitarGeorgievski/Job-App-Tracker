@@ -16,7 +16,6 @@ export class RolesGuard implements CanActivate {
     const decoratorRole = handlerRole || classRole;
     if (!decoratorRole) return true;
     const userRole = request.user.role as Role;
-    if (userRole !== decoratorRole) return false;
-    return true;
+    return decoratorRole.includes(userRole);
   }
 }

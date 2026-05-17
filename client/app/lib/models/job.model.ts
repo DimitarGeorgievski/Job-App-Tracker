@@ -1,6 +1,10 @@
 import { Company } from "./company.model";
 
-export type JobType = "REMOTE" | "ONSITE" | "HYBRID";
+export enum JobType {
+  REMOTE = "REMOTE",
+  ONSITE = "ONSITE",
+  HYBRID = "HYBRID",
+}
 
 export interface Job {
   id: number;

@@ -4,9 +4,7 @@ import { Request } from 'express';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(
-    private jwtService: JwtService,
-  ) {}
+  constructor(private jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
@@ -20,8 +18,10 @@ export class AuthGuard implements CanActivate {
       return false;
     }
   }
-  private extractToken(request: Request) {
-    const token = request.headers['authorization']?.split(' ')[1];
-    return token;
+  private extractToken(request: any) {
+    const cookieToken = request.cookies?.['access-token'];
+    if (cookieToken) return cookieToken;
+    const headerToken = request.headers['authorization']?.split(' ')[1];
+    return headerToken ?? null;
   }
 }

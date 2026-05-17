@@ -27,11 +27,11 @@ import { RolesGuard } from 'src/roles/roles.guard';
 import { Roles } from 'src/roles/roles.decorator';
 import { Role } from 'generated/prisma/enums';
 
-@UseGuards(AuthGuard,RolesGuard)
+@UseGuards(AuthGuard, RolesGuard)
 @Controller('cover-letters')
 export class CoverLetterController {
   constructor(private readonly coverLetterService: CoverLetterService) {}
-
+  @Roles([Role.USER])
   @Post('/text/:userId')
   async createTextCoverLetter(
     @Body(new ValidationPipe({ transform: true })) data: CreateCoverLetterDto,
@@ -39,6 +39,7 @@ export class CoverLetterController {
   ) {
     return this.coverLetterService.createTextCoverLetter(data, Number(userId));
   }
+  @Roles([Role.USER])
   @Post('/file/:userId')
   async createFileCoverLetter(
     @Req() req: FastifyRequest,
@@ -56,7 +57,7 @@ export class CoverLetterController {
       file,
     );
   }
-  @Roles(Role.ADMIN)
+  @Roles([Role.ADMIN])
   @Get()
   findAll(
     @Param('params')
@@ -69,13 +70,13 @@ export class CoverLetterController {
   ) {
     return this.coverLetterService.findAll(params);
   }
-  
-  @Roles(Role.COMPANY)
+
+  @Roles([Role.COMPANY])
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.coverLetterService.findOne(+id);
   }
-
+  @Roles([Role.USER])
   @Patch(':id')
   update(
     @Param('userId') userId: string,
@@ -83,7 +84,7 @@ export class CoverLetterController {
   ) {
     return this.coverLetterService.update(Number(userId), updateCoverLetterDto);
   }
-
+  @Roles([Role.USER, Role.COMPANY])
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.coverLetterService.remove(+id);
