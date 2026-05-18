@@ -17,9 +17,3 @@ export interface Job {
   companyId: number;
   company: Company;
 }
-
-export interface JobStore {
-  appliedJobs: Job[];
-  addAppliedJob: (job: Job) => void;
-  removeAppliedJob: (id: number) => void;
-}

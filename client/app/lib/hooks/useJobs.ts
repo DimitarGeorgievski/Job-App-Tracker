@@ -14,6 +14,8 @@ async function fetchJobs(params: JobsParams) {
   const cleanParams = {
     ...params,
     jobType: params.jobType || undefined,
+    query: params.query || undefined,
+    location: params.location || undefined,
   }
   const { data } = await api.get("/jobs", { params: cleanParams })
   return data as { jobs: Job[]; total: number; totalPages: number }

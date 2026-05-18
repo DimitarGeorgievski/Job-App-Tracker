@@ -1,14 +1,16 @@
 import { Job } from "@/app/lib/models/job.model";
 import { formatDistanceToNow } from "date-fns";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 interface JobCardProps {
   job: Job;
-  onApply?: (job: Job) => void;
-  onSave?: (job: Job) => void;
+  onToggle?: (job: Job) => void;
+  isSaved: (id: number) => boolean;
 }
 
-export default function JobCard({ job, onApply, onSave }: JobCardProps) {
+export default function JobCard({ job, onToggle, isSaved }: JobCardProps) {
+  const router = useRouter();
   return (
     <article className="bg-white border border-[#c1c6d4] rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer group">
       <div className="flex gap-4">
@@ -64,7 +66,9 @@ export default function JobCard({ job, onApply, onSave }: JobCardProps) {
           </div>
           <div className="mt-6 flex items-center gap-4">
             <button
-              onClick={() => onApply?.(job)}
+              onClick={() => {
+                router.push(`apply-job/${job.id}`);
+              }}
               className="bg-[#004e99] text-white cursor-pointer text-sm font-semibold px-6 py-2 rounded-full hover:bg-[#004e99]/90 transition-all flex items-center gap-1"
             >
               <svg
@@ -75,13 +79,13 @@ export default function JobCard({ job, onApply, onSave }: JobCardProps) {
               >
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
               </svg>
-              Easy Apply
+              Apply
             </button>
             <button
-              onClick={() => onSave?.(job)}
-              className="border border-[#004e99] text-[#004e99] cursor-pointer text-sm font-semibold px-6 py-2 rounded-full hover:bg-[#004e99]/5 transition-all"
+              onClick={() => onToggle?.(job)}
+              className="text-sm cursor-pointer font-semibold px-6 py-2 rounded-full transition-all border border-[#004e99] text-[#004e99] hover:bg-[#004e99]/5"
             >
-              Save
+              {isSaved(job.id) ? "Unsave" : "Save"}
             </button>
           </div>
         </div>

@@ -8,5 +8,6 @@ import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
   controllers: [CoverLetterController],
   providers: [CoverLetterService],
   imports: [PrismaModule,CloudinaryModule],
+  exports: [CoverLetterService]
 })
 export class CoverLetterModule {}

@@ -1,15 +1,14 @@
-import { IsInt, IsOptional, IsString } from 'class-validator';
+import {IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateApplicationDto {
-  @IsInt()
-  userId: number;
-  @IsInt()
+  @IsNumber()
   jobId: number;
-  @IsInt()
-  analyticsId: number;
-  @IsInt()
-  coverLetterId: number;
-  @IsOptional()
+  @IsNumber()
+  userId: number;
   @IsString()
+  @IsOptional()
   notes?: string;
+  @IsString()
+  @IsOptional()
+  coverLetter?: string;
 }

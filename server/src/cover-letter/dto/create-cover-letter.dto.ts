@@ -17,7 +17,8 @@ export class CreateCoverLetterDto {
   @Type(() => Number)
   @IsInt()
   applicationId: number;
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
-  userId: number;
+  userId?: number;
 }

@@ -33,6 +33,8 @@ export class JobController {
     @Query('limit') limit: string = '3',
     @Query('jobType') jobType?: JobType,
     @Query('date') date?: string,
+    @Query('query') query?: string,
+    @Query('location') location?: string,
   ) {
     const take = Number(limit);
     const skip = (Number(page) - 1) * take;
@@ -48,6 +50,19 @@ export class JobController {
       where: {
         ...(jobType ? { jobType } : {}),
         ...(createdAt ? { createdAt } : {}),
+        ...(query
+          ? {
+              OR: [
+                { title: { contains: query, mode: 'insensitive' } },
+                { description: { contains: query, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+        ...(location
+          ? {
+              location: { contains: location, mode: 'insensitive' },
+            }
+          : {}),
       },
       orderBy: { createdAt: 'desc' },
     });

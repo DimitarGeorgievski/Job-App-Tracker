@@ -7,6 +7,7 @@ import { PrismaModule } from 'src/prisma/prisma.module';
 import { ApplicationReminderProcessor } from './workers/application-reminder.processor';
 import { ApplicationReminderService } from './services/application-reminder.service';
 import { UserModule } from 'src/user/user.module';
+import { CoverLetterModule } from 'src/cover-letter/cover-letter.module';
 
 @Module({
   imports: [
@@ -15,7 +16,8 @@ import { UserModule } from 'src/user/user.module';
     }),
     MailModule,
     PrismaModule,
-    UserModule
+    UserModule,
+    CoverLetterModule
   ],
   controllers: [ApplicationController],
   providers: [

@@ -8,6 +8,7 @@ import { useJobs } from "./lib/hooks/useJobs";
 import JobCard from "@/components/jobCard/JobCard";
 import { JobType } from "./lib/models/job.model";
 import Image from "next/image";
+import { useJobStore } from "./lib/store/useJobStore";
 
 const JOB_TYPE_OPTIONS: { label: string; value: JobType }[] = [
   { label: "Remote", value: JobType.REMOTE },
@@ -15,15 +16,20 @@ const JOB_TYPE_OPTIONS: { label: string; value: JobType }[] = [
   { label: "Hybrid", value: JobType.HYBRID },
 ];
 export default function Home() {
+  const { toggleSavedJob, isSaved } = useJobStore();
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState({
     date: "any",
     jobType: "" as JobType | "",
+    query: "",
+    location: "",
   });
   const { data } = useJobs({
     page: currentPage,
     jobType: filters.jobType,
     date: filters.date,
+    query: filters.query,
+    location: filters.location,
   });
   const jobs = data?.jobs ?? [];
   const totalPages = data?.totalPages ?? 1;
@@ -41,12 +47,15 @@ export default function Home() {
     setFilters({
       date: "any",
       jobType: "" as JobType | "",
+      query: "",
+      location: "",
     });
     setCurrentPage(1);
   }
-  function handleSearch() {}
-  function handleApply() {}
-  function handleSave() {}
+  function handleSearch(query: string, location: string) {
+    setFilters((prev) => ({ ...prev, query, location }));
+    setCurrentPage(1);
+  }
   function getPages() {
     const pages: (number | "...")[] = [];
     if (totalPages <= 5) {
@@ -168,8 +177,10 @@ export default function Home() {
                 <JobCard
                   key={job.id}
                   job={job}
-                  onApply={handleApply}
-                  onSave={handleSave}
+                  isSaved={isSaved}
+                  onToggle={() => {
+                    toggleSavedJob(job);
+                  }}
                 />
               ))
             ) : (

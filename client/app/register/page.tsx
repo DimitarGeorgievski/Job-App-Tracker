@@ -1,6 +1,6 @@
 "use client";
 import { api } from "@/app/lib/axios";
-import { companySchema, userSchema } from "@/app/lib/schemas/register.schema";
+import { companySchema, userSchema } from "@/app/lib/schemas/registerUser.schema";
 import { useForm } from "@tanstack/react-form";
 import axios from "axios";
 import Image from "next/image";

@@ -3,54 +3,60 @@ import { Application, AppStatus, Prisma } from 'generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApplicationReminderService } from './application-reminder.service';
 import { CreateApplicationDto } from '../dto/create-application.dto';
+import { CoverLetterService } from 'src/cover-letter/cover-letter.service';
+import { MultipartFile } from '@fastify/multipart';
 
 @Injectable()
 export class ApplicationService {
   constructor(
     private prisma: PrismaService,
     private reminderService: ApplicationReminderService,
+    private coverLetterService: CoverLetterService,
   ) {}
-  async create(data: CreateApplicationDto) {
-    const app = await this.prisma.application.create({
-      data: {
-        notes: data.notes,
-        status: AppStatus.APPLIED,
-        user: {
-          connect: {
-            id: data.userId,
-          },
+  async create(data: CreateApplicationDto, file?: MultipartFile | null) {
+    return await this.prisma.$transaction(async (tx) => {
+      const app = await tx.application.create({
+        data: {
+          user: { connect: { id: data.userId } },
+          job: { connect: { id: data.jobId } },
+          notes: data.notes,
+          status: AppStatus.APPLIED,
         },
-        coverLetters: {
-          connect: {
-            id: data.coverLetterId,
+      });
+      if (file) {
+        await this.coverLetterService.createFileCoverLetter(
+          {
+            applicationId: app.id,
+            result: data.coverLetter,
+            userId: data.userId,
           },
-        },
-        Analytics: {
-          connect: {
-            id: data.analyticsId,
+          data.userId,
+          file,
+        );
+      } else if (data.coverLetter) {
+        await this.coverLetterService.createTextCoverLetter(
+          {
+            applicationId: app.id,
+            content: data.coverLetter,
+            result: data.coverLetter,
+            userId: data.userId,
           },
-        },
-        job: {
-          connect: {
-            id: data.jobId,
-          },
-        },
-      },
-      include: {
-        user: true,
-        job: true,
-      },
+          data.userId,
+        );
+      }
+      await this.reminderService.scheduleFollowUp(app.id);
+      return app;
     });
-    await this.reminderService.scheduleFollowUp(app.id);
-    return app;
   }
 
-  async findAll(params: {
-    skip?: number;
-    take?: number;
-    where?: Prisma.ApplicationWhereInput;
-    orderBy?: Prisma.ApplicationOrderByWithRelationInput;
-  } = {}): Promise<Application[]> {
+  async findAll(
+    params: {
+      skip?: number;
+      take?: number;
+      where?: Prisma.ApplicationWhereInput;
+      orderBy?: Prisma.ApplicationOrderByWithRelationInput;
+    } = {},
+  ): Promise<Application[]> {
     const { orderBy, skip, take, where } = params;
     return await this.prisma.application.findMany({
       skip,
