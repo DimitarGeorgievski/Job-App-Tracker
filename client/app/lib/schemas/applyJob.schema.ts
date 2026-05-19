@@ -1,10 +1,10 @@
 import z from "zod";
+import { isValidPhoneNumber, parsePhoneNumberWithError } from "libphonenumber-js";
 
 export const applySchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.email("Invalid email"),
-  phone: z.string().min(1, "Phone is required"),
+  notes: z.string().min(1, "String is required").max(200, "max characters are 200."),
+  phone: z.string().refine(isValidPhoneNumber, "Please specify a valid phone number (include the international prefix).")
+        .transform((value) => parsePhoneNumberWithError(value).number.toString()),
   coverLetter: z.string(),
   terms: z
     .boolean()

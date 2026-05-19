@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  ValidationPipe,
 } from '@nestjs/common';
 import { ApplicationService } from './services/application.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
@@ -26,7 +27,7 @@ export class ApplicationController {
   constructor(private readonly applicationService: ApplicationService) {}
   @Roles([Role.USER])
   @Post()
-  create(@Body() data: CreateApplicationDto) {
+  create(@Body(new ValidationPipe({ transform: true })) data: CreateApplicationDto) {
     return this.applicationService.create(data);
   }
   @Get()

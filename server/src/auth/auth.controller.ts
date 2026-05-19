@@ -27,6 +27,7 @@ export class AuthController {
       password: (file?.fields.password as any)?.value,
       firstName: (file?.fields.firstName as any)?.value,
       lastName: (file?.fields.lastName as any)?.value,
+      phoneNumber: (file?.fields.phoneNumber as any)?.value,
       role: (file?.fields.role as any)?.value,
     } as CreateUserDto;
     return this.authService.registerUser(data, file ?? null);

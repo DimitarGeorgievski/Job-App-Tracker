@@ -61,7 +61,13 @@ export class JobService {
   async findOne(id: number): Promise<Job | null> {
     return await this.prisma.job.findUnique({
       where: { id },
-      include: { company: true },
+      include: {
+        company: {
+          include: {
+            user: true,
+          },
+        },
+      },
     });
   }
 

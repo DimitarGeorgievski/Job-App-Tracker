@@ -1,6 +1,8 @@
 import {
   IsEmail,
   IsEnum,
+  IsNumber,
+  IsOptional,
   IsString,
   MinLength,
 } from 'class-validator';
@@ -15,6 +17,9 @@ export class CreateUserDto {
   firstName: string;
   @IsString()
   lastName: string;
+  @IsOptional()
+  @IsNumber()
+  phoneNumber: number;
   @IsString()
   @MinLength(6)
   password: string;

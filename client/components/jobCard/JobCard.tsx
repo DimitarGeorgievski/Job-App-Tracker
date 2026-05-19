@@ -12,7 +12,7 @@ interface JobCardProps {
 export default function JobCard({ job, onToggle, isSaved }: JobCardProps) {
   const router = useRouter();
   return (
-    <article className="bg-white border border-[#c1c6d4] rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer group">
+    <article className="bg-white border border-[#c1c6d4] rounded-lg p-4 hover:shadow-md transition-shadow group">
       <div className="flex gap-4">
         <div className="relative w-12 h-12 bg-[#efeded] rounded border border-[#c1c6d4] shrink-0 overflow-hidden flex items-center justify-center">
           {job.company.user.logoURL ? (

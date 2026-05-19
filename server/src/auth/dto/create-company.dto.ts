@@ -1,6 +1,7 @@
 import {
   IsEmail,
   IsEnum,
+  IsNumber,
   IsOptional,
   IsString,
   IsStrongPassword,
@@ -30,6 +31,9 @@ export class createCompanyDto {
   @IsOptional()
   @IsString()
   website: string;
+  @IsNumber()
+  @IsOptional()
+  phoneNumber: number;
   @IsOptional()
   @IsEnum(Role)
   role: Role;

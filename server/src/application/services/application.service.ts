@@ -17,8 +17,8 @@ export class ApplicationService {
     return await this.prisma.$transaction(async (tx) => {
       const app = await tx.application.create({
         data: {
-          user: { connect: { id: data.userId } },
-          job: { connect: { id: data.jobId } },
+          user: { connect: { id: Number(data.userId) } },
+          job: { connect: { id: Number(data.jobId) } },
           notes: data.notes,
           status: AppStatus.APPLIED,
         },

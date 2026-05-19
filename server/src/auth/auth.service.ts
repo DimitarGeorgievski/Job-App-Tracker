@@ -50,6 +50,7 @@ export class AuthService {
         {
           email: data.email,
           password: data.password,
+          phoneNumber: data.phoneNumber,
           role: Role.COMPANY,
         },
         file,

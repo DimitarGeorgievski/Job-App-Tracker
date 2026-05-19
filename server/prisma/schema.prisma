@@ -23,6 +23,7 @@ model User {
   logoPublicId String?
   logoURL String?
   password String
+  phoneNumber Int?
   role Role
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
