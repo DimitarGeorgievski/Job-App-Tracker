@@ -32,6 +32,12 @@ model User {
   company Company?
   refreshTokens String[]
 }
+model Education{
+  id Int @id @default(autoincrement())
+  start DateTime
+  end DateTime
+  
+}
 
 model Company {
   id Int @id @default(autoincrement())

@@ -7,7 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
-  ValidationPipe,
+  Req,
 } from '@nestjs/common';
 import { ApplicationService } from './services/application.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
@@ -20,15 +20,35 @@ import { Application, Role } from 'generated/prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/roles/roles.guard';
 import { Roles } from 'src/roles/roles.decorator';
+import { type FastifyRequest } from 'fastify';
+import { type MultipartFile } from '@fastify/multipart';
 
-@UseGuards(AuthGuard,RolesGuard)
+@UseGuards(AuthGuard, RolesGuard)
 @Controller('applications')
 export class ApplicationController {
   constructor(private readonly applicationService: ApplicationService) {}
   @Roles([Role.USER])
   @Post()
-  create(@Body(new ValidationPipe({ transform: true })) data: CreateApplicationDto) {
-    return this.applicationService.create(data);
+  async create(@Req() req: FastifyRequest) {
+    const fields: Record<string, string> = {};
+    let file: MultipartFile | null = null;
+    for await (const part of req.parts()) {
+      if (part.type === 'file') {
+        file = part as MultipartFile;
+      } else {
+        fields[part.fieldname] = part.value as string;
+      }
+    }
+    const userId = (req as any).user.userId;
+    const data = {
+      jobId: Number(fields.jobId),
+      userId: Number(userId),
+      notes: fields.notes,
+      phone: fields.phone,
+      coverLetter: fields.coverLetter,
+    } as CreateApplicationDto;
+
+    return this.applicationService.create(data, file);
   }
   @Get()
   @Roles([Role.ADMIN])

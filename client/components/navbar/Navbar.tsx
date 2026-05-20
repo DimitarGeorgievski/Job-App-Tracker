@@ -72,7 +72,7 @@ export default function Navbar({ onSearch, user }: NavbarProps) {
         <nav className="flex items-center gap-8 ml-6">
           <div className="hidden lg:flex items-center gap-6">
             <Link
-              href="/jobs"
+              href="/ "
               className="flex flex-col items-center text-[#004e99] border-b-2 border-[#004e99] p-1"
             >
               <svg

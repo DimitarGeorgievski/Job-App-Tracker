@@ -32,6 +32,7 @@ export class ApplicationService {
           },
           data.userId,
           file,
+          tx
         );
       } else if (data.coverLetter) {
         await this.coverLetterService.createTextCoverLetter(
@@ -42,6 +43,7 @@ export class ApplicationService {
             userId: data.userId,
           },
           data.userId,
+          tx
         );
       }
       await this.reminderService.scheduleFollowUp(app.id);

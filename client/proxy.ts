@@ -21,5 +21,6 @@ export const config = {
     "/register/company",
     "/forget-password",
     "/in-work",
+    "/profile"
   ],
 };

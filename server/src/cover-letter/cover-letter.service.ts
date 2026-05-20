@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CoverLetter, Prisma } from 'generated/prisma/client';
+import { CoverLetter, type Prisma } from 'generated/prisma/client';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { CreateCoverLetterDto } from './dto/create-cover-letter.dto';
 import { UpdateCoverLetterDto } from './dto/update-cover-letter.dto';
@@ -16,9 +16,14 @@ export class CoverLetterService {
     private prisma: PrismaService,
     private cloudinaryService: CloudinaryService,
   ) {}
-  async createTextCoverLetter(data: CreateCoverLetterDto, userId: number) {
-    if(data.fileURL || data.filePublicId) throw new BadRequestException("Cannot send file")
-    return await this.prisma.coverLetter.create({
+  async createTextCoverLetter(
+    data: CreateCoverLetterDto,
+    userId: number,
+    tx?: Prisma.TransactionClient,
+  ) {
+    if (data.fileURL || data.filePublicId)
+      throw new BadRequestException('Cannot send file');
+    return await tx?.coverLetter.create({
       data: {
         result: data.result,
         content: data.content,
@@ -37,6 +42,7 @@ export class CoverLetterService {
     data: CreateCoverLetterDto,
     userId: number,
     file: MultipartFile,
+    tx?: Prisma.TransactionClient,
   ) {
     if (data.content) {
       throw new BadRequestException('Cannot send both content and file');
@@ -46,7 +52,7 @@ export class CoverLetterService {
     const uploadedFile = await this.cloudinaryService.uploadFile(file);
     fileURL = uploadedFile.secure_url;
     filePublicId = uploadedFile.public_id;
-    return await this.prisma.coverLetter.create({
+    return await tx?.coverLetter.create({
       data: {
         result: data.result,
         fileURL: fileURL,
