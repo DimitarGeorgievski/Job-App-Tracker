@@ -29,6 +29,7 @@ model User {
   updatedAt DateTime @updatedAt
   applications Application[]
   coverLetters CoverLetter[]
+  education Education[]
   company Company?
   refreshTokens String[]
 }
@@ -36,7 +37,10 @@ model Education{
   id Int @id @default(autoincrement())
   start DateTime
   end DateTime
-  
+  title String
+  department String
+  userId Int @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Company {
