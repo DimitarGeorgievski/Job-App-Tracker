@@ -29,6 +29,7 @@ model User {
   updatedAt DateTime @updatedAt
   applications Application[]
   coverLetters CoverLetter[]
+  experience Experience[]
   education Education[]
   company Company?
   refreshTokens String[]
@@ -41,6 +42,21 @@ model Education{
   department String
   userId Int @unique
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Experience{
+  id Int @id @default(autoincrement())
+  start DateTime
+  end DateTime
+  title String
+  description String
+  location String
+  companyId Int @unique
+  userId Int @unique
+  company Company @relation(fields: [companyId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
 }
 
 model Company {
@@ -54,6 +70,7 @@ model Company {
   user User @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   job Job?
+  experiences Experience[]
 }
 
 model Job{
