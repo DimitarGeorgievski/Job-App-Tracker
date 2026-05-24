@@ -52,7 +52,7 @@ model Experience{
   title String
   description String
   location String
-  companyId Int @unique
+  companyId Int
   userId Int
   company Company @relation(fields: [companyId], references: [id])
   user User @relation(fields: [userId], references: [id])

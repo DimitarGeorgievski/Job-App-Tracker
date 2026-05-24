@@ -28,17 +28,10 @@ export class EducationController {
 
   @Post()
   create(
-    @Body() createEducationDto: CreateEducationDto,
+    @Body() data: CreateEducationDto,
     @Req() req: FastifyRequest & { user: { id: number } },
   ) {
-    return this.educationService.create({
-      ...createEducationDto,
-      user: {
-        connect: {
-          id: req.user.id,
-        },
-      },
-    });
+    return this.educationService.create(data, req.user.id);
   }
   @Get()
   findAll(
@@ -61,10 +54,7 @@ export class EducationController {
     @Param('id') id: string,
     @Body() updateEducationDto: UpdateEducationDto,
   ) {
-    return this.educationService.update(
-      Number(id),
-      updateEducationDto,
-    );
+    return this.educationService.update(Number(id), updateEducationDto);
   }
   @Delete(':id')
   remove(@Param('id') id: string) {

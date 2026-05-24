@@ -18,6 +18,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { CustomThrottlerGuard } from './rate-limit/throttler.guard';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { EducationModule } from './education/education.module';
+import { ExperienceModule } from './experience/experience.module';
 import Redis from 'ioredis';
 
 @Module({
@@ -49,6 +50,7 @@ import Redis from 'ioredis';
     CoverLetterModule,
     AnalyticsModule,
     EducationModule,
+    ExperienceModule,
   ],
   controllers: [AppController],
   providers: [AppService, UserService, PrismaService, {
