@@ -1,11 +1,11 @@
 "use client";
-import Navbar from "@/components/navbar/Navbar";
+import Navbar from "@/app/components/navbar/Navbar";
 import { User } from "./lib/hooks/user";
-import Footer from "@/components/footer/Footer";
+import Footer from "@/app/components/footer/Footer";
 import Link from "next/link";
 import { useState } from "react";
 import { useJobs } from "./lib/hooks/useJobs";
-import JobCard from "@/components/jobCard/JobCard";
+import JobCard from "@/app/components/jobCard/JobCard";
 import { JobType } from "./lib/models/job.model";
 import Image from "next/image";
 import { useJobStore } from "./lib/store/useJobStore";

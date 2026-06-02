@@ -75,7 +75,13 @@ export class AuthController {
 
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post('logout')
-  logoutUser(@Headers('refresh-token') refreshToken: string) {
-    return this.authService.logoutUser(refreshToken);
+  async logoutUser(@Req() req: FastifyRequest, @Res() res: FastifyReply) {
+    const refreshToken = req.cookies?.['refresh-token'];
+    if (refreshToken) {
+      await this.authService.logoutUser(refreshToken);
+    }
+    res.clearCookie('access-token');
+    res.clearCookie('refresh-token');
+    res.send();
   }
 }

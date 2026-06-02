@@ -1,13 +1,18 @@
 "use client";
 import { api } from "@/app/lib/axios";
-import { companySchema, userSchema } from "@/app/lib/schemas/registerUser.schema";
+import {
+  companySchema,
+  userSchema,
+} from "@/app/lib/schemas/registerUser.schema";
 import { useForm } from "@tanstack/react-form";
 import axios from "axios";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function RegisterPage() {
+  const router = useRouter()
   const [serverError, setServerError] = useState("");
   const [activeTab, setActiveTab] = useState<"company" | "user">("user");
   const [showPassword, setShowPassword] = useState(false);
@@ -25,18 +30,24 @@ export default function RegisterPage() {
     validators: { onChange: companySchema },
     onSubmit: async ({ value }) => {
       setServerError("");
-      console.log(value);
+      const formData = new FormData();
+      formData.append("companyName", value.companyName);
+      formData.append("industry", value.industry);
+      formData.append("website", value.website);
+      formData.append("location", value.location);
+      formData.append("description", value.description);
+      formData.append("email", value.email);
+      formData.append("password", value.password);
+      if (value.logo) {
+        formData.append("file", value.logo);
+      }
       try {
-        await api.post("/auth/register/company", {
-          name: value.companyName,
-          industry: value.industry,
-          website: value.website,
-          location: value.location,
-          description: value.description,
-          email: value.email,
-          password: value.password,
-          logo: value.logo,
+        await api.post("/auth/register/company", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         });
+        router.push('/login')
       } catch (error) {
         if (axios.isAxiosError(error)) {
           setServerError(
@@ -58,7 +69,7 @@ export default function RegisterPage() {
     onSubmit: async ({ value }) => {
       setServerError("");
       try {
-        await api.post("/auth/register/company", {
+        await api.post("/auth/register", {
           firstName: value.firstName,
           lastName: value.lastName,
           email: value.email,

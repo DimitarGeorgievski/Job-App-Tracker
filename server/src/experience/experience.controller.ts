@@ -1,15 +1,28 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Req,
+} from '@nestjs/common';
 import { ExperienceService } from './experience.service';
 import { CreateExperienceDto } from './dto/create-experience.dto';
 import { UpdateExperienceDto } from './dto/update-experience.dto';
+import type { FastifyRequest } from 'fastify';
 
 @Controller('experience')
 export class ExperienceController {
   constructor(private readonly experienceService: ExperienceService) {}
 
   @Post()
-  create(@Body() createExperienceDto: CreateExperienceDto) {
-    return this.experienceService.create(createExperienceDto);
+  create(
+    @Body() createExperienceDto: CreateExperienceDto,
+    @Req() req: FastifyRequest & { user: { id: number } },
+  ) {
+    return this.experienceService.create(createExperienceDto, req.user.id);
   }
 
   @Get()
@@ -19,11 +32,14 @@ export class ExperienceController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.experienceService.findOne(+id);
+    return this.experienceService.findById(+id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateExperienceDto: UpdateExperienceDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateExperienceDto: UpdateExperienceDto,
+  ) {
     return this.experienceService.update(+id, updateExperienceDto);
   }
 

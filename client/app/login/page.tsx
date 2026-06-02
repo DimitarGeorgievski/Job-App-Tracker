@@ -29,6 +29,7 @@ export default function LoginPage() {
           password: value.password,
         });
         queryClient.setQueryData(["user"], user);
+        router.refresh();
         router.push("/");
       } catch (error) {
         if (axios.isAxiosError(error)) {

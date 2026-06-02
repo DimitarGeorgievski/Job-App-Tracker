@@ -4,8 +4,8 @@ import {
   stepOneApplySchema,
   stepTwoApplySchema,
 } from "@/app/lib/schemas/applyJob.schema";
-import Footer from "@/components/footer/Footer";
-import Navbar from "@/components/navbar/Navbar";
+import Footer from "@/app/components/footer/Footer";
+import Navbar from "@/app/components/navbar/Navbar";
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -18,7 +18,6 @@ type Step = 1 | 2 | 3;
 
 export default function ApplyJobPage() {
   const { id } = useParams();
-  console.log(id, "tip:", typeof id);
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [serverError, setServerError] = useState("");
@@ -311,7 +310,7 @@ export default function ApplyJobPage() {
                       </div>
                       <stepTwoForm.Field name="coverLetter">
                         {(field) => {
-                          const fileSelected = !!stepTwoForm.state.values.file
+                          const fileSelected = !!stepTwoForm.state.values.file;
                           return (
                             <textarea
                               className="w-full h-48 bg-white border border-[#c1c6d4] rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#004e99] focus:border-[#004e99] transition-all resize-none leading-relaxed"

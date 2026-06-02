@@ -1,8 +1,11 @@
 "use client";
 
+import { api } from "@/app/lib/axios";
 import { user } from "@/app/lib/models/user.model";
+import { queryClient } from "@/app/lib/queryClient";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 interface NavbarProps {
@@ -13,8 +16,19 @@ interface NavbarProps {
 export default function Navbar({ onSearch, user }: NavbarProps) {
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
+  const pathname = usePathname();
+  const router = useRouter();
+  function isActive(link: string) {
+    return pathname === link;
+  }
   function handleSearch() {
     onSearch?.(query, location);
+  }
+  async function handleLogout() {
+    await api.post("/auth/logout");
+    queryClient.clear();
+    router.refresh();
+    router.push("/login");
   }
   return (
     <header className="bg-white border-b border-[#c1c6d4] fixed top-0 w-full z-50">
@@ -72,23 +86,34 @@ export default function Navbar({ onSearch, user }: NavbarProps) {
         <nav className="flex items-center gap-8 ml-6">
           <div className="hidden lg:flex items-center gap-6">
             <Link
-              href="/ "
-              className="flex flex-col items-center text-[#004e99] border-b-2 border-[#004e99] p-1"
+              href="/"
+              className={`flex flex-col items-center p-1 transition-colors ${
+                isActive("/")
+                  ? "text-[#004e99] border-b-2 border-[#004e99]"
+                  : "text-[#414752] hover:bg-[#e9e8e7] rounded-lg"
+              }`}
             >
               <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="currentColor"
+                width="24px"
+                height="24px"
+                viewBox="0 0 15 15"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
               >
-                <rect x="2" y="7" width="20" height="14" rx="2" />
-                <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+                <path
+                  d="M5.5 3V2.5C5.5 1.39543 6.39543 0.5 7.5 0.5C8.60457 0.5 9.5 1.39543 9.5 2.5V3M0.5 11.5H14.5M1.5 3.5H13.5C14.0523 3.5 14.5 3.94772 14.5 4.5V13.5C14.5 14.0523 14.0523 14.5 13.5 14.5H1.5C0.947716 14.5 0.5 14.0523 0.5 13.5V4.5C0.5 3.94772 0.947715 3.5 1.5 3.5Z"
+                  stroke={isActive("/") ? "#004e99" : "currentColor"}
+                />
               </svg>
               <span className="text-xs font-semibold">Jobs</span>
             </Link>
             <Link
               href="/in-work"
-              className="flex flex-col items-center text-[#414752] hover:bg-[#e9e8e7] p-1 rounded-lg transition-colors"
+              className={`flex flex-col items-center p-1 transition-colors ${
+                isActive("/in-work")
+                  ? "text-[#004e99] border-b-2 border-[#004e99]"
+                  : "text-[#414752] hover:bg-[#e9e8e7] rounded-lg"
+              }`}
             >
               <svg
                 width="24"
@@ -106,8 +131,12 @@ export default function Navbar({ onSearch, user }: NavbarProps) {
               <span className="text-xs font-semibold">Network</span>
             </Link>
             <Link
-              href="/in-work"
-              className="flex flex-col items-center text-[#414752] hover:bg-[#e9e8e7] p-1 rounded-lg transition-colors"
+              href="/messaging"
+              className={`flex flex-col items-center p-1 transition-colors ${
+                isActive("/messaging")
+                  ? "text-[#004e99] border-b-2 border-[#004e99]"
+                  : "text-[#414752] hover:bg-[#e9e8e7] rounded-lg"
+              }`}
             >
               <svg
                 width="24"
@@ -159,22 +188,6 @@ export default function Navbar({ onSearch, user }: NavbarProps) {
                     <line x1="20" y1="8" x2="20" y2="14" />
                   </svg>
                 </Link>
-                <Link
-                  href={"/in-work"}
-                  className="w-8 h-8 rounded-full bg-[#e9e8e7] overflow-hidden border border-[#c1c6d4] flex items-center justify-center cursor-pointer"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#414752"
-                    strokeWidth="2"
-                  >
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
-                </Link>
               </>
             ) : (
               <Link
@@ -210,6 +223,30 @@ export default function Navbar({ onSearch, user }: NavbarProps) {
                 </div>
               )}
             </Link>
+            <button
+              onClick={handleLogout}
+              className="text-red-500 cursor-pointer hover:bg-red-50 p-1.5 rounded-full transition-colors shrink-0"
+            >
+              <svg
+                fill="currentColor"
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 52 52"
+              >
+                <g>
+                  <path
+                    d="M21,48.5v-3c0-0.8-0.7-1.5-1.5-1.5h-10C8.7,44,8,43.3,8,42.5v-33C8,8.7,8.7,8,9.5,8h10
+        C20.3,8,21,7.3,21,6.5v-3C21,2.7,20.3,2,19.5,2H6C3.8,2,2,3.8,2,6v40c0,2.2,1.8,4,4,4h13.5C20.3,50,21,49.3,21,48.5z"
+                  />
+                  <path
+                    d="M49.6,27c0.6-0.6,0.6-1.5,0-2.1L36.1,11.4c-0.6-0.6-1.5-0.6-2.1,0l-2.1,2.1c-0.6,0.6-0.6,1.5,0,2.1l5.6,5.6
+        c0.6,0.6,0.2,1.7-0.7,1.7H15.5c-0.8,0-1.5,0.6-1.5,1.4v3c0,0.8,0.7,1.6,1.5,1.6h21.2c0.9,0,1.3,1.1,0.7,1.7l-5.6,5.6
+        c-0.6,0.6-0.6,1.5,0,2.1l2.1,2.1c0.6,0.6,1.5,0.6,2.1,0L49.6,27z"
+                  />
+                </g>
+              </svg>
+            </button>
           </div>
         </nav>
       </div>

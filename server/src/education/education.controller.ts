@@ -8,15 +8,11 @@ import {
   Delete,
   Req,
 } from '@nestjs/common';
-
 import { EducationService } from './education.service';
 import { CreateEducationDto } from './dto/create-education.dto';
 import { UpdateEducationDto } from './dto/update-education.dto';
-
 import { Education } from 'generated/prisma/client';
-
 import type { FastifyRequest } from 'fastify';
-
 import {
   EducationOrderByWithRelationInput,
   EducationWhereUniqueInput,
