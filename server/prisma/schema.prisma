@@ -19,6 +19,7 @@ model User {
   firstName String?
   lastName String?
   description String?
+  language String?
   skills String[]
   logoPublicId String?
   logoURL String?
@@ -32,7 +33,17 @@ model User {
   experience Experience[]
   education Education[]
   company Company?
-  refreshTokens String[]
+  refreshTokens RefreshToken[]
+}
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  tokenHash String
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+  @@index([userId])
 }
 model Education{
   id Int @id @default(autoincrement())
@@ -43,12 +54,13 @@ model Education{
   userId Int
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  @@index([userId])
 }
 
 model Experience{
   id Int @id @default(autoincrement())
   start DateTime
-  end DateTime
+  end DateTime?
   title String
   description String
   location String
@@ -57,6 +69,7 @@ model Experience{
   company Company @relation(fields: [companyId], references: [id])
   user User @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+  @@index([userId])
 }
 
 model Company {
@@ -69,8 +82,9 @@ model Company {
   userId Int @unique
   user User @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
-  job Job?
+  job Job[]
   experiences Experience[]
+  @@index([companyName])
 }
 
 model Job{
@@ -84,6 +98,9 @@ model Job{
   companyId Int @unique
   company Company @relation(fields: [companyId], references: [id])
   applications Application[]
+  @@index([title])
+  @@index([jobType])
+  @@index([location])
 }
 
 model Application{
@@ -98,6 +115,8 @@ model Application{
   job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
   coverLetters CoverLetter[]
   Analytics Analytics[]
+  @@index([userId])
+  @@index([jobId])
 }
 
 model CoverLetter{
@@ -114,6 +133,7 @@ model CoverLetter{
   application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   Analytics Analytics?
+  @@index([userId])
 }
 
 model Analytics {
@@ -126,6 +146,8 @@ model Analytics {
   createdAt DateTime @default(now())
   application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   coverLetter CoverLetter @relation(fields: [coverLetterId], references: [id], onDelete: Cascade)
+  @@index([applicationId])
+  @@index([companyId])
 }
 
 enum Role {
