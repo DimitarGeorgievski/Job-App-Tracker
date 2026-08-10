@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function RegisterPage() {
-  const router = useRouter()
+  const router = useRouter();
   const [serverError, setServerError] = useState("");
   const [activeTab, setActiveTab] = useState<"company" | "user">("user");
   const [showPassword, setShowPassword] = useState(false);

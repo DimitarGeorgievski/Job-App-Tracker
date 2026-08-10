@@ -13,10 +13,12 @@ import { User } from "@/app/lib/hooks/user";
 
 interface Company {
   id: number;
-  name: string;
+  companyName: string;
   industry?: string;
   location?: string;
-  logoURL?: string;
+  user: {
+    logoURL: string;
+  }
 }
 
 interface ModalProps {
@@ -63,7 +65,7 @@ export default function CreateSkillModal({ onClose }: ModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="p-2 hover:bg-[#f5f3f3] rounded-full transition-colors"
+            className="p-2 hover:bg-[#f5f3f3] cursor-pointer rounded-full transition-colors"
           >
             <svg
               width="20"
@@ -99,7 +101,7 @@ export default function CreateSkillModal({ onClose }: ModalProps) {
                     className="w-full border border-[#c1c6d4] rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#004e99] focus:border-[#004e99] outline-none"
                   />
                   {field.state.meta.errors?.[0] && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-md text-red-500 mt-1">
                       {field.state.meta.errors[0]}
                     </p>
                   )}
@@ -118,14 +120,14 @@ export default function CreateSkillModal({ onClose }: ModalProps) {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-6 py-2 text-sm font-semibold text-[#004e99] hover:bg-[#f5f3f3] rounded-full transition-colors"
+                  className="px-6 py-2 text-sm cursor-pointer font-semibold text-[#004e99] hover:bg-[#f5f3f3] rounded-full transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!canSubmit || isSubmitting}
-                  className="px-6 py-2 text-sm font-semibold text-white bg-[#0a66c2] hover:bg-[#004e99] rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-2 text-sm cursor-pointer font-semibold text-white bg-[#0a66c2] hover:bg-[#004e99] rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? "Saving..." : "Save"}
                 </button>
@@ -177,19 +179,18 @@ export function CreateExperienceModal({ onClose }: ModalProps) {
         location,
         description,
         start: toDate(startMonth, startYear),
-        end: isCurrent ? null : toDate(endMonth!, endYear!),
+        end: isCurrent ? new Date() : toDate(endMonth!, endYear!),
       });
       await queryClient.invalidateQueries({ queryKey: ["user"] });
       onClose();
     },
   });
-
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await api.get(
-          `/companies?search=${encodeURIComponent(companyQuery)}`,
+          `/user/companies?name=${encodeURIComponent(companyQuery)}`,
         );
         setCompanies(res.data ?? []);
         setShowDropdown(true);
@@ -202,15 +203,15 @@ export function CreateExperienceModal({ onClose }: ModalProps) {
     };
   }, [companyQuery]);
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent) => {
       if (
         dropdownRef.current &&
         !dropdownRef.current.contains(e.target as Node)
       )
         setShowDropdown(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
   return (
     <div className="fixed inset-0 bg-black/60 z-60 flex items-center justify-center p-4 overflow-y-auto">
@@ -220,7 +221,7 @@ export function CreateExperienceModal({ onClose }: ModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="p-2 hover:bg-[#f5f3f3] rounded-full transition-colors"
+            className="p-2 hover:bg-[#f5f3f3] cursor-pointer  rounded-full transition-colors"
           >
             <svg
               width="20"
@@ -256,7 +257,7 @@ export function CreateExperienceModal({ onClose }: ModalProps) {
                     className="w-full border border-[#c1c6d4] rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#004e99] focus:border-[#004e99] outline-none"
                   />
                   {field.state.meta.errors?.[0] && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-md text-red-500 mt-1">
                       {field.state.meta.errors[0]}
                     </p>
                   )}
@@ -292,7 +293,7 @@ export function CreateExperienceModal({ onClose }: ModalProps) {
                               companyNameField.handleChange("");
                               setCompanyQuery("");
                             }}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#727783] hover:text-[#1b1c1c]"
+                            className="absolute right-3 cursor-pointer top-1/2 -translate-y-1/2 text-[#727783] hover:text-[#1b1c1c]"
                           >
                             <svg
                               width="20"
@@ -316,18 +317,18 @@ export function CreateExperienceModal({ onClose }: ModalProps) {
                                 key={company.id}
                                 onClick={() => {
                                   Company.handleChange(company.id);
-                                  companyNameField.handleChange(company.name);
-                                  setCompanyQuery(company.name);
+                                  companyNameField.handleChange(company.companyName);
+                                  setCompanyQuery(company.companyName);
                                   setShowDropdown(false);
                                 }}
                                 className="p-3 hover:bg-[#f5f3f3] cursor-pointer flex items-center gap-3 border-b border-[#c1c6d4] last:border-0"
                               >
-                                {company.logoURL ? (
+                                {company.user?.logoURL ? (
                                   <Image
                                     width={32}
                                     height={32}
-                                    src={company.logoURL}
-                                    alt={company.name}
+                                    src={company.user.logoURL}
+                                    alt={company.companyName}
                                     className="rounded object-cover"
                                   />
                                 ) : (
@@ -353,10 +354,10 @@ export function CreateExperienceModal({ onClose }: ModalProps) {
                                 )}
                                 <div>
                                   <p className="text-sm font-semibold">
-                                    {company.name}
+                                    {company.companyName}
                                   </p>
                                   {(company.industry || company.location) && (
-                                    <p className="text-xs text-[#414752]">
+                                    <p className="text-md text-[#414752]">
                                       {[company.industry, company.location]
                                         .filter(Boolean)
                                         .join(" · ")}
@@ -373,7 +374,7 @@ export function CreateExperienceModal({ onClose }: ModalProps) {
                         </div>
                       )}
                       {Company.state.meta.errors?.[0] && (
-                        <p className="text-xs text-red-500 mt-1">
+                        <p className="text-md text-red-500 mt-1">
                           {Company.state.meta.errors[0]}
                         </p>
                       )}
@@ -541,14 +542,14 @@ export function CreateExperienceModal({ onClose }: ModalProps) {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-6 py-2 text-sm font-semibold text-[#004e99] hover:bg-[#f5f3f3] rounded-full transition-colors"
+                  className="px-6 py-2 text-sm font-semibold cursor-pointer text-[#004e99] hover:bg-[#f5f3f3] rounded-full transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!canSubmit || isSubmitting}
-                  className="px-6 py-2 text-sm font-semibold text-white bg-[#0a66c2] hover:bg-[#004e99] rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-2 text-sm font-semibold cursor-pointer text-white bg-[#0a66c2] hover:bg-[#004e99] rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? "Saving..." : "Save"}
                 </button>
@@ -593,7 +594,7 @@ export function CreateEducationModal({ onClose }: ModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="p-2 hover:bg-[#f5f3f3] rounded-full transition-colors"
+            className="p-2 hover:bg-[#f5f3f3] cursor-pointer rounded-full transition-colors"
           >
             <svg
               width="20"
@@ -629,7 +630,7 @@ export function CreateEducationModal({ onClose }: ModalProps) {
                     className="w-full border border-[#c1c6d4] rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#004e99] focus:border-[#004e99] outline-none"
                   />
                   {field.state.meta.errors?.[0] && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-md text-red-500 mt-1">
                       {field.state.meta.errors[0]}
                     </p>
                   )}
@@ -751,14 +752,14 @@ export function CreateEducationModal({ onClose }: ModalProps) {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-6 py-2 text-sm font-semibold text-[#004e99] hover:bg-[#f5f3f3] rounded-full transition-colors"
+                  className="px-6 py-2 text-sm font-semibold cursor-pointer text-[#004e99] hover:bg-[#f5f3f3] rounded-full transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!canSubmit || isSubmitting}
-                  className="px-6 py-2 text-sm font-semibold text-white bg-[#0a66c2] hover:bg-[#004e99] rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-2 text-sm font-semibold text-white cursor-pointer bg-[#0a66c2] hover:bg-[#004e99] rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? "Saving..." : "Save"}
                 </button>

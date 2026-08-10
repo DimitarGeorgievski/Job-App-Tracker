@@ -4,7 +4,7 @@ services:
       context: ./client
       dockerfile: dockerfile.dev
     ports:
-      - '3001:3001'
+      - "3001:3001"
     volumes:
       - ./client:/app
       - /app/node_modules
@@ -18,30 +18,37 @@ services:
       context: ./server
       dockerfile: dockerfile.dev
     ports:
-      - '3000:3000'
+      - "3000:3000"
     volumes:
-      - ./server:/usr/src/app 
+      - ./server:/usr/src/app
       - /usr/src/app/node_modules
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     env_file:
       - .env
   postgres:
     image: postgres:16
     restart: always
     ports:
-      - '5432:5432'
+      - "5432:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   redis:
     image: redis:7
     restart: always
     ports:
-      - '6379:6379'
+      - "6379:6379"
 volumes:
   postgres_data:
