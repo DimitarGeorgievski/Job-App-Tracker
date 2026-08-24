@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Company, Prisma, User } from 'generated/prisma/client';
+import { hash } from 'bcryptjs';
 
 @Injectable()
 export class UserService {
@@ -29,6 +30,9 @@ export class UserService {
   findById(id: number): Promise<Omit<User, 'role'> | null> {
     return this.prisma.user.findUnique({
       where: { id },
+      include: {
+        refreshTokens: true,
+      },
       omit: {
         role: true,
       },
@@ -67,24 +71,30 @@ export class UserService {
       where: { id },
     });
   }
-  //FIXME CHANGE THIS FROM ARRAY TO UPDATE THE USER TO DB IT ONLY PUSH BUT NOT SAVE AND HASH IT
-  async saveRefreshToken(id: number, refreshToken: string) {
-    const user = await this.findById(id);
-    user?.refreshTokens.push(refreshToken);
-  }
-  async deleteRefreshToken(id: number, refreshToken: string) {
-    const user = await this.findById(id);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    const updatedTokens = user.refreshTokens.filter(
-      (token) => token !== refreshToken,
-    );
-    return this.prisma.user.update({
-      where: { id },
+  async saveRefreshToken(
+    userId: number,
+    refreshToken: string,
+    jti: string,
+    familyId: string,
+  ) {
+    const tokenHash = await hash(refreshToken, 10);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    return this.prisma.refreshToken.create({
       data: {
-        refreshTokens: updatedTokens,
+        userId: userId,
+        jti,
+        familyId,
+        tokenHash,
+        expiresAt,
       },
     });
   }
+  async revokeRefreshToken(jti: string) {
+  return this.prisma.refreshToken.update({
+    where: { jti },
+    data: {
+      revokedAt: new Date(),
+    },
+  });
+}
 }

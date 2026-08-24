@@ -14,7 +14,7 @@ datasource db {
 }
 
 model User {
-  id  Int  @default(autoincrement()) @id
+  id Int @default(autoincrement()) @id
   email String @unique
   firstName String?
   lastName String?
@@ -36,14 +36,17 @@ model User {
   refreshTokens RefreshToken[]
 }
 model RefreshToken {
-  id        Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
   tokenHash String
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jti String @unique
+  familyId String
+  userId Int
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
   revokedAt DateTime?
   @@index([userId])
+  @@index([familyId])
 }
 model Education{
   id Int @id @default(autoincrement())

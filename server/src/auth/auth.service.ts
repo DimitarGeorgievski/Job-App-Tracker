@@ -14,6 +14,7 @@ import { createCompanyDto } from './dto/create-company.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { MultipartFile } from '@fastify/multipart';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -42,7 +43,11 @@ export class AuthService {
       logoURL = uploaded.secure_url;
       logoPublicId = uploaded.public_id;
     }
-    return await this.usersService.create({...userData, logoURL, logoPublicId});
+    return await this.usersService.create({
+      ...userData,
+      logoURL,
+      logoPublicId,
+    });
   }
   async registerCompany(data: createCompanyDto, file: MultipartFile | null) {
     return await this.prisma.$transaction(async (transaction) => {
@@ -79,18 +84,31 @@ export class AuthService {
     );
     if (!isPasswordValid)
       throw new UnauthorizedException('invalid credentials');
-    const token = await this.jwtService.signAsync({
-      userId: foundUser.id,
-      role: foundUser.role,
-    });
+    const token = await this.jwtService.signAsync(
+      {
+        userId: foundUser.id,
+        role: foundUser.role,
+      },
+      {
+        secret: this.configService.get('ACCESS_TOKEN_SECRET'),
+        expiresIn: '15m',
+      },
+    );
+    const jti = randomUUID();
+    const familyId = randomUUID();
     const refreshToken = await this.jwtService.signAsync(
-      { userId: foundUser.id, role: foundUser.role },
+      { userId: foundUser.id, role: foundUser.role, jti, familyId },
       {
         secret: this.configService.get('REFRESH_TOKEN_SECRET'),
         expiresIn: '7d',
       },
     );
-    await this.usersService.saveRefreshToken(foundUser.id, refreshToken);
+    await this.usersService.saveRefreshToken(
+      foundUser.id,
+      refreshToken,
+      jti,
+      familyId,
+    );
     foundUser.password = '';
     return {
       user: foundUser,
@@ -101,31 +119,73 @@ export class AuthService {
 
   async refreshAccessToken(refreshToken: string) {
     try {
-      const { userId } = await this.jwtService.verifyAsync(refreshToken, {
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
         secret: this.configService.get('REFRESH_TOKEN_SECRET'),
       });
-      const foundUser = await this.usersService.findById(userId);
-      const tokenExists = foundUser?.refreshTokens.some(
-        (token) => token === refreshToken,
+      const { userId, jti, familyId, role } = payload;
+      const token = await this.prisma.refreshToken.findUnique({
+        where: {
+          jti,
+        },
+      });
+      if (!token) throw new ForbiddenException('Invalid refresh token');
+      if (token.revokedAt) {
+        await this.prisma.refreshToken.updateMany({
+          where: { familyId },
+          data: {
+            revokedAt: new Date(),
+          },
+        });
+        throw new ForbiddenException('Refresh token is beind reused');
+      }
+      const isTokenValid = await compare(refreshToken, token.tokenHash);
+      if (!isTokenValid) throw new ForbiddenException('Invalid refresh token');
+      await this.prisma.refreshToken.update({
+        where: { jti },
+        data: {
+          revokedAt: new Date(),
+        },
+      });
+      const newJti = randomUUID();
+      const accessToken = await this.jwtService.signAsync(
+        {
+          userId,
+          role,
+        },
+        {
+          secret: this.configService.get('ACCESS_TOKEN_SECRET'),
+          expiresIn: '15m',
+        },
       );
-      if (!tokenExists) throw new Error();
-      const token = await this.jwtService.signAsync({ userId: foundUser?.id });
-      return { token };
+      const newRefreshToken = await this.jwtService.signAsync(
+        {
+          userId,
+          role,
+          jti: newJti,
+          familyId,
+        },
+        {
+          secret: this.configService.get('REFRESH_TOKEN_SECRET'),
+          expiresIn: '7d',
+        },
+      );
+      await this.usersService.saveRefreshToken(
+        userId,
+        newRefreshToken,
+        newJti,
+        familyId,
+      );
+      return { accessToken, refreshToken: newRefreshToken };
     } catch (error) {
       console.log(error);
-      throw new ForbiddenException();
+      throw new ForbiddenException('Invalid refresh token');
     }
   }
 
   async logoutUser(refreshToken: string) {
-    try {
-      const { userId } = await this.jwtService.verifyAsync(refreshToken, {
-        secret: this.configService.get('REFRESH_TOKEN_SECRET'),
-      });
-      await this.usersService.deleteRefreshToken(userId, refreshToken);
-    } catch (error) {
-      console.log(error);
-      throw new BadRequestException("couldn't logout user");
-    }
+    const { jti } = await this.jwtService.verifyAsync(refreshToken, {
+      secret: this.configService.get('REFRESH_TOKEN_SECRET'),
+    });
+    await this.usersService.revokeRefreshToken(jti);
   }
 }
