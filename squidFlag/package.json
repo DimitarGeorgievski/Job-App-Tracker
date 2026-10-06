@@ -1,13 +1,19 @@
 {
   "name": "squidflag",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22 <23"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  "scripts": {
+    "api": "npm run start:dev -w @squidflag/api",
+    "dashboard": "npm run dev -w @squidflag/dashboard",
+    "build:packages": "tsc -b packages/contracts packages/flag-engine",
+    "dev:packages": "tsc -b packages/contracts packages/flag-engine --watch",
+    "typecheck": "npm run typecheck -w @squidflag/contracts --if-present && npm run typecheck -w @squidflag/flag-engine --if-present && npm run typecheck -w @squidflag/api --if-present && npm run typecheck -w @squidflag/dashboard --if-present"
+  }
 }

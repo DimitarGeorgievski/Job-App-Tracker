@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "declaration": true,
+    "module": "commonjs",
+    "moduleResolution": "node"
+  },
+  "include": ["src"],
+  "references": [
+    {
+      "path": "../contracts"
+    }
+  ]
+}
