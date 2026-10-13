@@ -6,7 +6,7 @@
     "outDir": "./dist",
     "declaration": true,
     "module": "commonjs",
-    "moduleResolution": "node"
+    "moduleResolution": "node10"
   },
   "include": ["src"]
 }

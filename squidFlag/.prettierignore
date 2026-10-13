@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.next/
+coverage/
+generated/
+package-lock.json
+**/package-lock.json
+**/prisma/migrations/

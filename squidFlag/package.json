@@ -14,6 +14,19 @@
     "dashboard": "npm run dev -w @squidflag/dashboard",
     "build:packages": "tsc -b packages/contracts packages/flag-engine",
     "dev:packages": "tsc -b packages/contracts packages/flag-engine --watch",
-    "typecheck": "npm run typecheck -w @squidflag/contracts --if-present && npm run typecheck -w @squidflag/flag-engine --if-present && npm run typecheck -w @squidflag/api --if-present && npm run typecheck -w @squidflag/dashboard --if-present"
+    "lint": "npm run lint -w @squidflag/contracts && npm run lint -w @squidflag/flag-engine && npm run lint -w @squidflag/api && npm run lint -w @squidflag/dashboard",
+    "lint:fix": "npm run lint:fix -w @squidflag/contracts && npm run lint:fix -w @squidflag/flag-engine && npm run lint:fix -w @squidflag/api && npm run lint:fix -w @squidflag/dashboard",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck -w @squidflag/contracts && npm run typecheck -w @squidflag/flag-engine && npm run typecheck -w @squidflag/api && npm run typecheck -w @squidflag/dashboard",
+    "check": "npm run build:packages && npm run lint && npm run format:check && npm run typecheck"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "typescript-eslint": "^8.71.2"
   }
 }
