@@ -8,3 +8,4 @@
 3. Implement i18n feature 
 4. CarrerPath Premium Feature + Payment proccessor
 5. Add Feature Flag MicroService
+6. Add AI CV Analysis
