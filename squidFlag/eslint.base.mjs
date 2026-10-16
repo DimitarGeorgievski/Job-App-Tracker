@@ -53,5 +53,11 @@ export function createTypeScriptConfig(tsconfigRootDir) {
         eqeqeq: ['error', 'always'],
       },
     },
+    {
+      files: ['apps/api/test/setup-e2e.ts'],
+      rules: {
+        'no-restricted-properties': 'off',
+      },
+    },
   );
 }

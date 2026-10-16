@@ -16,8 +16,7 @@ export function createPinoConfig(env: AppEnv): Params {
         remove: true,
       },
       autoLogging: {
-        ignore: (request) =>
-          healthPaths.has(request.url?.split('?')[0] ?? ''),
+        ignore: (request) => healthPaths.has(request.url?.split('?')[0] ?? ''),
       },
       ...(env.NODE_ENV === 'development'
         ? {

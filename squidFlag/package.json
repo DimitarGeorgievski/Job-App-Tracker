@@ -19,7 +19,12 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "npm run typecheck -w @squidflag/contracts && npm run typecheck -w @squidflag/flag-engine && npm run typecheck -w @squidflag/api && npm run typecheck -w @squidflag/dashboard",
-    "check": "npm run build:packages && npm run lint && npm run format:check && npm run typecheck"
+    "check": "npm run build:packages && npm run lint && npm run format:check && npm run typecheck",
+    "infra:up": "docker compose --env-file infra/.env -f infra/docker-compose.yaml up -d",
+    "infra:down": "docker compose --env-file infra/.env -f infra/docker-compose.yaml down",
+    "infra:ps": "docker compose --env-file infra/.env -f infra/docker-compose.yaml ps",
+    "dev": "npm run infra:up && npm run build:packages && npm run api",
+    "dev:dashboard": "npm run dashboard"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

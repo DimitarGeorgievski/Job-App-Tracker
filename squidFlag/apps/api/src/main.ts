@@ -4,18 +4,16 @@ import {
   type NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
-import { ConfigService } from '@nestjs/config';
-import { type AppEnv } from './platform/config/env.schema';
-import { loadEnvironment } from './platform/config/env.loader';
 import { Logger, PinoLogger } from 'nestjs-pino';
 import { randomUUID } from 'node:crypto';
 import { GlobalExceptionFilter } from './platform/logging/global-exception.filter';
+import { appEnv } from './platform/config/app-env';
 
 async function bootstrap() {
-  const env = loadEnvironment();
   const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule.register(env),
+    AppModule,
     new FastifyAdapter({
+      bodyLimit: 1048576,
       trustProxy: false,
       requestIdHeader: false,
       genReqId: () => randomUUID(),
@@ -31,9 +29,9 @@ async function bootstrap() {
     reply.header('x-request-id', request.id);
     done();
   });
-  const configService = app.get<ConfigService<AppEnv, true>>(ConfigService);
-  const host = configService.getOrThrow<string>('HOST');
-  const port = configService.getOrThrow<number>('PORT');
-  await app.listen({host,port});
+  await app.listen({
+    host: appEnv.HOST,
+    port: appEnv.PORT,
+  });
 }
 void bootstrap();

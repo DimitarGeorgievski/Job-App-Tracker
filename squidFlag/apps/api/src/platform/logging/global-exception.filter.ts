@@ -5,7 +5,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import type { FastifyReply } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { PinoLogger } from 'nestjs-pino';
 
 @Catch()
@@ -13,14 +13,41 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   constructor(private readonly logger: PinoLogger) {
     this.logger.setContext(GlobalExceptionFilter.name);
   }
+
   catch(exception: Error, host: ArgumentsHost): void {
-    const response = host.switchToHttp().getResponse<FastifyReply>();
+    const http = host.switchToHttp();
+    const response = http.getResponse<FastifyReply>();
+    const request = http.getRequest<FastifyRequest>();
+    const InternalServerErrorCode = 500;
     if (response.sent) return;
+    const requestId = request.id;
     if (exception instanceof HttpException) {
-      response.status(exception.getStatus()).send(exception.getResponse());
+      const status = exception.getStatus();
+      if (status >= InternalServerErrorCode) {
+        this.logger.error(
+          {
+            err: exception,
+            requestId,
+            status,
+            method: request.method,
+            url: request.url,
+          },
+          'HTTP server exception',
+        );
+      }
+      response.status(status).send(exception.getResponse());
       return;
     }
-    this.logger.error(exception, 'Unhandled exception');
+    this.logger.error(
+      {
+        err: exception,
+        requestId: request.id,
+        method: request.method,
+        url: request.url,
+      },
+      'Unhandled exception',
+    );
+
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       message: 'Internal server error',
