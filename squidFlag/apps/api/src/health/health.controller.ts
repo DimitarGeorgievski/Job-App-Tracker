@@ -1,29 +1,15 @@
-import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
-import { RedisService } from '../platform/redis/redis.service';
+import { Controller, Get } from '@nestjs/common';
+import { HealthService } from './health.service';
 
 @Controller('health')
 export class HealthController {
-  constructor(private readonly redisService: RedisService) {}
+  constructor(private readonly healthService: HealthService) {}
   @Get('live')
   healthCheck() {
-    return { status: 'ok' };
+    return { status: 'ok' as const };
   }
   @Get('ready')
-  async readinessCheck() {
-    const redisHealthy = await this.redisService.isHealthy();
-    if (!redisHealthy) {
-      throw new ServiceUnavailableException({
-        status: 'error',
-        dependencies: {
-          redis: 'unavailable',
-        },
-      });
-    }
-    return {
-      status: 'ok',
-      dependencies: {
-        redis: 'connected',
-      },
-    };
+  readinessCheck() {
+    return this.healthService.checkReadiness();
   }
 }

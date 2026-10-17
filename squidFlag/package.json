@@ -13,7 +13,6 @@
     "api": "npm run start:dev -w @squidflag/api",
     "dashboard": "npm run dev -w @squidflag/dashboard",
     "build:packages": "tsc -b packages/contracts packages/flag-engine",
-    "dev:packages": "tsc -b packages/contracts packages/flag-engine --watch",
     "lint": "npm run lint -w @squidflag/contracts && npm run lint -w @squidflag/flag-engine && npm run lint -w @squidflag/api && npm run lint -w @squidflag/dashboard",
     "lint:fix": "npm run lint:fix -w @squidflag/contracts && npm run lint:fix -w @squidflag/flag-engine && npm run lint:fix -w @squidflag/api && npm run lint:fix -w @squidflag/dashboard",
     "format": "prettier --write .",
@@ -23,11 +22,13 @@
     "infra:up": "docker compose --env-file infra/.env -f infra/docker-compose.yaml up -d",
     "infra:down": "docker compose --env-file infra/.env -f infra/docker-compose.yaml down",
     "infra:ps": "docker compose --env-file infra/.env -f infra/docker-compose.yaml ps",
-    "dev": "npm run infra:up && npm run build:packages && npm run api",
+    "dev:packages": "tsc -b packages/contracts packages/flag-engine --watch",
+    "dev": "npm run infra:up && npm run build:packages && concurrently -k -n packages,api,dashboard \"npm run dev:packages\" \"npm run api\" \"npm run dashboard\"",
     "dev:dashboard": "npm run dashboard"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "concurrently": "^10.0.6",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.13.0",

@@ -15,8 +15,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     this.client = new Redis(appEnv.REDIS_URL, {
       lazyConnect: true,
       maxRetriesPerRequest: 1,
-      retryStrategy: (attempt) =>
-        attempt <= 5 ? Math.min(attempt * 200, 1000) : null,
+      retryStrategy: (attempt) => Math.min(attempt * 200, 5000),
     });
     this.client.on('error', (error: Error) => {
       this.logger.error(`Redis client error: ${error.message}`);

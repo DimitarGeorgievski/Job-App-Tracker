@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const nodeEnvSchema = z.enum(['development', 'staging', 'production']);
+const nodeEnvSchema = z.enum(['development', 'test', 'staging', 'production']);
 const appRoleSchema = z.enum(['all', 'control', 'evaluator']);
 const baseEnvSchema = z.object({
   NODE_ENV: nodeEnvSchema.default('development'),

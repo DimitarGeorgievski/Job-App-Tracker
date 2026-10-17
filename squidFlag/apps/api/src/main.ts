@@ -16,11 +16,13 @@ async function bootstrap() {
       bodyLimit: 1048576,
       trustProxy: false,
       requestIdHeader: false,
+      forceCloseConnections: 'idle',
       genReqId: () => randomUUID(),
     }),
     { bufferLogs: true },
   );
   app.useLogger(app.get(Logger));
+  app.enableShutdownHooks();
   app.useGlobalFilters(
     new GlobalExceptionFilter(await app.resolve(PinoLogger)),
   );
