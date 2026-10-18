@@ -1,16 +1,23 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../../../generated/prisma/client';
-import { appEnv } from '../config/app-env';
+import { APP_ENV } from '../config/app-env.token';
+import type { PostgresHealthCheck } from '../health/postgres-health.token';
+import type { AppEnv } from '../config/env.schema';
 
 @Injectable()
 export class PrismaService
   extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
+  implements OnModuleInit, OnModuleDestroy, PostgresHealthCheck
 {
-  constructor() {
+  constructor(@Inject(APP_ENV) env: AppEnv) {
     const adapter = new PrismaPg({
-      connectionString: appEnv.DATABASE_URL,
+      connectionString: env.DATABASE_URL,
     });
     super({ adapter });
   }
@@ -19,5 +26,13 @@ export class PrismaService
   }
   async onModuleDestroy(): Promise<void> {
     await this.$disconnect();
+  }
+  async isHealthy(): Promise<boolean> {
+    try {
+      await this.$queryRaw`SELECT 1`;
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

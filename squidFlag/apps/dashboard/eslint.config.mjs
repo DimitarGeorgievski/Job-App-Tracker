@@ -5,7 +5,38 @@ import nextTs from 'eslint-config-next/typescript';
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // Override default ignores of eslint-config-next.
+  {
+    files: ['src/**/*.{js,jsx,ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'pg',
+              message: 'Database drivers must not be imported by the dashboard.',
+            },
+            {
+              name: 'ioredis',
+              message: 'Redis clients must not be imported by the dashboard.',
+            },
+          ],
+          patterns: [
+            {
+              group: [
+                '@prisma/*',
+                '@aws-sdk/*',
+                '@squidflag/api',
+                '@squidflag/api/*',
+                '**/apps/api/**',
+              ],
+              message: 'The dashboard must not depend on backend infrastructure or API source.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   globalIgnores([
     // Default ignores of eslint-config-next:
     '.next/**',

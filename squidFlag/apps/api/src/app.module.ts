@@ -1,21 +1,31 @@
-import { Module } from '@nestjs/common';
+import { DynamicModule, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LoggerModule } from 'nestjs-pino';
-import { appEnv } from './platform/config/app-env';
 import { createPinoConfig } from './platform/logging/pino.config';
-import { HealthController } from './health/health.controller';
 import { RedisModule } from './platform/redis/redis.module';
-import { HealthService } from './health/health.service';
 import { PrismaModule } from './platform/database/prisma.module';
+import { APP_ENV } from './platform/config/app-env.token';
+import type { AppEnv } from './platform/config/env.schema';
+import { HealthService } from './platform/health/health.service';
+import { HealthController } from './platform/health/health.controller';
 
-@Module({
-  imports: [
-    LoggerModule.forRoot(createPinoConfig(appEnv)),
-    RedisModule,
-    PrismaModule.register(),
-  ],
-  controllers: [AppController, HealthController],
-  providers: [AppService, HealthService],
-})
-export class AppModule {}
+@Module({})
+export class AppModule {
+  static register(config: AppEnv): DynamicModule {
+    return {
+      module: AppModule,
+      imports: [
+        LoggerModule.forRoot(createPinoConfig(config)),
+        RedisModule.register(config),
+        PrismaModule.register(config),
+      ],
+      controllers: [AppController, HealthController],
+      providers: [
+        { provide: APP_ENV, useValue: config },
+        AppService,
+        HealthService,
+      ],
+    };
+  }
+}

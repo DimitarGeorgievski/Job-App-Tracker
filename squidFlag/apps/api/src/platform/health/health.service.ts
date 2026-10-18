@@ -1,12 +1,16 @@
 import {
+  Inject,
   Injectable,
   OnModuleDestroy,
+  Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { RedisService } from '../platform/redis/redis.service';
 import { DependencyChecks, HealthDependencies } from './health.type';
-import { Optional } from '@nestjs/common';
-import { PrismaService } from '../platform/database/prisma.service';
+import { RedisService } from '../redis/redis.service';
+import {
+  POSTGRES_HEALTH_CHECK,
+  PostgresHealthCheck,
+} from './postgres-health.token';
 
 @Injectable()
 export class HealthService implements OnModuleDestroy {
@@ -14,7 +18,9 @@ export class HealthService implements OnModuleDestroy {
   private shuttingDown = false;
   constructor(
     private readonly redisService: RedisService,
-    @Optional() private readonly prismaService?: PrismaService,
+    @Optional()
+    @Inject(POSTGRES_HEALTH_CHECK)
+    private readonly postgresHealth?: PostgresHealthCheck,
   ) {}
   async checkReadiness(): Promise<{
     status: 'ok';
@@ -67,7 +73,7 @@ export class HealthService implements OnModuleDestroy {
   }
   private async performChecks(): Promise<DependencyChecks> {
     const redisCheck = this.checkRedis();
-    if (!this.prismaService) {
+    if (!this.postgresHealth) {
       return {
         redis: await redisCheck,
       };
@@ -76,6 +82,7 @@ export class HealthService implements OnModuleDestroy {
       redisCheck,
       this.checkPostgres(),
     ]);
+
     return { redis, postgres };
   }
   private async checkRedis(): Promise<boolean> {
@@ -86,13 +93,14 @@ export class HealthService implements OnModuleDestroy {
     }
   }
   private async checkPostgres(): Promise<boolean> {
-    const prisma = this.prismaService;
-    if (!prisma) {
+    if (!this.postgresHealth) {
       return true;
     }
     try {
-      await this.withTimeout(prisma.$queryRaw`SELECT 1`, 'PostgreSQL');
-      return true;
+      return await this.withTimeout(
+        this.postgresHealth.isHealthy(),
+        'PostgreSQL',
+      );
     } catch {
       return false;
     }

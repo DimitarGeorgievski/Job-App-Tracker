@@ -10,8 +10,9 @@ import { GlobalExceptionFilter } from './platform/logging/global-exception.filte
 import { appEnv } from './platform/config/app-env';
 
 async function bootstrap() {
+  const config = appEnv;
   const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
+    AppModule.register(config),
     new FastifyAdapter({
       bodyLimit: 1048576,
       trustProxy: false,

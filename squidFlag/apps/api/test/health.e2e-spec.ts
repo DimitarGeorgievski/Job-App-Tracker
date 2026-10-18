@@ -1,29 +1,12 @@
-import { NestFactory } from '@nestjs/core';
-import {
-  FastifyAdapter,
-  type NestFastifyApplication,
-} from '@nestjs/platform-fastify';
-import { randomUUID } from 'node:crypto';
+import { type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { afterAll, beforeAll, describe, expect, it, jest } from '@jest/globals';
 import { RedisService } from '../src/platform/redis/redis.service';
+import { buildTestApp } from './helpers/build-test-app';
 
 describe('Health endpoint (e2e)', () => {
   let app: NestFastifyApplication;
-
   beforeAll(async () => {
-    const { AppModule } = await import('../src/app.module');
-    app = await NestFactory.create<NestFastifyApplication>(
-      AppModule,
-      new FastifyAdapter({
-        bodyLimit: 1048576,
-        trustProxy: false,
-        requestIdHeader: false,
-        genReqId: () => randomUUID(),
-      }),
-      { logger: false },
-    );
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
+    app = await buildTestApp({ role: 'all' });
   });
   afterAll(async () => {
     await app?.close();
@@ -46,6 +29,7 @@ describe('Health endpoint (e2e)', () => {
       status: 'ok',
       dependencies: {
         redis: 'connected',
+        postgres: 'connected',
       },
     });
   });
@@ -63,6 +47,7 @@ describe('Health endpoint (e2e)', () => {
       status: 'error',
       dependencies: {
         redis: 'unavailable',
+        postgres: 'connected',
       },
     });
     healthSpy.mockRestore();
