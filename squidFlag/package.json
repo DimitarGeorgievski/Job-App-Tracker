@@ -24,7 +24,7 @@
     "dev:packages": "tsc -b packages/contracts packages/flag-engine --watch",
     "dev": "npm run infra:up && npm run build:packages && concurrently -k -n packages,api,dashboard \"npm run dev:packages\" \"npm run api\" \"npm run dashboard\"",
     "dev:dashboard": "npm run dashboard",
-    "check": "npm run build:packages && npm run check:boundaries && npm run lint && npm run format:check && npm run typecheck && npm run test:unit && npm run test:int && npm run test:e2e",
+    "check": "npm run prisma:generate -w @squidflag/api && npm run build:packages && npm run check:boundaries && npm run lint && npm run format:check && npm run typecheck && npm run test:unit && npm run test:int && npm run test:e2e",
     "test": "npm run build:packages && npm run test:unit && npm run test:int && npm run test:e2e",
     "test:unit": "npm run test:unit -w @squidflag/api",
     "test:int": "npm run test:int -w @squidflag/api",
