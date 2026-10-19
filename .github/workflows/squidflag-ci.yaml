@@ -1,0 +1,70 @@
+name: SquidFlag CI
+on:
+  push:
+    paths:
+      - "squidFlag/**"
+      - ".github/workflows/squidflag-ci.yaml"
+  pull_request:
+    paths:
+      - "squidFlag/**"
+      - ".github/workflows/squidflag-ci.yaml"
+permissions:
+  contents: read
+concurrency:
+  group: squidflag-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+defaults:
+  run:
+    working-directory: squidFlag
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      E2E_DATABASE_URL: postgresql://squidflag:ci-postgres-password@127.0.0.1:5432/squidflag_test?schema=public
+      E2E_REDIS_URL: redis://:ci-redis-password@127.0.0.1:6379/1
+    services:
+      postgres:
+        image: postgres:17.4-alpine
+        env:
+          POSTGRES_DB: squidflag_test
+          POSTGRES_USER: squidflag
+          POSTGRES_PASSWORD: ci-postgres-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U squidflag -d squidflag_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start authenticated Redis
+        run: |
+          docker run --detach --name squidflag-redis --publish 6379:6379 redis:7.4.2-alpine \
+            redis-server --save '' --appendonly no --requirepass ci-redis-password
+          for attempt in {1..12}; do
+            if docker exec --env REDISCLI_AUTH=ci-redis-password squidflag-redis redis-cli ping | grep -q PONG; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs squidflag-redis
+          exit 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: squidFlag/.nvmrc
+          cache: npm
+          cache-dependency-path: squidFlag/package-lock.json
+      - run: npm ci
+      - name: Scan SquidFlag for secrets
+        working-directory: ${{ github.workspace }}
+        run: >-
+          docker run --rm
+          --volume "${{ github.workspace }}/squidFlag:/repo:ro"
+          zricethezav/gitleaks:v8.30.0
+          dir --source=/repo --redact
+      - name: Audit production dependencies
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
+      - run: npm run check
