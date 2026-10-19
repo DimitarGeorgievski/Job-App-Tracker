@@ -9,6 +9,9 @@
   "engines": {
     "node": ">=22 <23"
   },
+  "overrides": {
+    "fastify": "5.12.7"
+  },
   "scripts": {
     "api": "npm run start:dev -w @squidflag/api",
     "dashboard": "npm run dev -w @squidflag/dashboard",
