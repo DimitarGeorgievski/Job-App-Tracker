@@ -57,13 +57,13 @@ jobs:
           cache: npm
           cache-dependency-path: squidFlag/package-lock.json
       - run: npm ci
-      - name: Scan SquidFlag for secrets
+            - name: Scan SquidFlag for secrets
         working-directory: ${{ github.workspace }}
         run: >-
           docker run --rm
           --volume "${{ github.workspace }}/squidFlag:/repo:ro"
           zricethezav/gitleaks:v8.30.0
-          dir --source=/repo --redact
+          dir /repo --redact
       - name: Audit production dependencies
         continue-on-error: true
         run: npm audit --omit=dev --audit-level=high
