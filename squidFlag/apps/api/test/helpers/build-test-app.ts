@@ -8,6 +8,7 @@ import { AppModule } from '../../src/app.module';
 import { EvaluatorAppModule } from '../../src/evaluator-app.module';
 import { parseEnv, type AppRole } from '../../src/platform/config/env.schema';
 import { e2eConfig } from '../test-config';
+import { assertTestDatabase } from '../assert-test-database';
 
 interface BuildTestAppOptions {
   role: AppRole;
@@ -23,6 +24,7 @@ export async function buildTestApp({
     NODE_ENV: 'test',
     APP_ROLE: role,
   });
+  assertTestDatabase(config);
   const app = await NestFactory.create<NestFastifyApplication>(
     role === 'evaluator'
       ? EvaluatorAppModule.register(config)

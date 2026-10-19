@@ -7,10 +7,10 @@ import { EvaluatorAppModule } from './evaluator-app.module';
 import { Logger, PinoLogger } from 'nestjs-pino';
 import { randomUUID } from 'node:crypto';
 import { GlobalExceptionFilter } from './platform/logging/global-exception.filter';
-import { appEnv } from './platform/config/app-env';
+import { loadEnvironment } from './platform/config/env.loader';
 
 async function bootstrap() {
-  const config = appEnv;
+  const config = loadEnvironment();
   const app = await NestFactory.create<NestFastifyApplication>(
     EvaluatorAppModule.register(config),
     new FastifyAdapter({
@@ -33,8 +33,8 @@ async function bootstrap() {
     done();
   });
   await app.listen({
-    host: appEnv.HOST,
-    port: appEnv.PORT,
+    host: config.HOST,
+    port: config.PORT,
   });
 }
 void bootstrap();

@@ -39,6 +39,16 @@ jobs:
           --health-retries 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Scan SquidFlag for secrets
+        working-directory: ${{ github.workspace }}
+        run: >-
+          docker run --rm
+          --volume "${{ github.workspace }}/squidFlag:/repo:ro"
+          zricethezav/gitleaks:v8.30.0
+          dir /repo --redact
       - name: Start authenticated Redis
         run: |
           docker run --detach --name squidflag-redis --publish 6379:6379 redis:7.4.2-alpine \
@@ -57,13 +67,8 @@ jobs:
           cache: npm
           cache-dependency-path: squidFlag/package-lock.json
       - run: npm ci
-      - name: Scan SquidFlag for secrets
-        working-directory: ${{ github.workspace }}
-        run: >-
-          docker run --rm
-          --volume "${{ github.workspace }}/squidFlag:/repo:ro"
-          zricethezav/gitleaks:v8.30.0
-          dir /repo --redact
+      # Warn-only for now: known dependency advisories are tracked separately.
+      # Revisit this policy when the outstanding audit findings are resolved.
       - name: Audit production dependencies
         continue-on-error: true
         run: npm audit --omit=dev --audit-level=high

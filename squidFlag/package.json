@@ -27,12 +27,13 @@
     "dev:packages": "tsc -b packages/contracts packages/flag-engine --watch",
     "dev": "npm run infra:up && npm run build:packages && concurrently -k -n packages,api,dashboard \"npm run dev:packages\" \"npm run api\" \"npm run dashboard\"",
     "dev:dashboard": "npm run dashboard",
-    "check": "npm run prisma:generate -w @squidflag/api && npm run build:packages && npm run check:boundaries && npm run lint && npm run format:check && npm run typecheck && npm run test:unit && npm run test:int && npm run test:e2e",
+    "check": "npm run prisma:generate -w @squidflag/api && npm run build:packages && npm run check:architecture && npm run check:boundaries && npm run lint && npm run format:check && npm run typecheck && npm run test:unit && npm run test:int && npm run test:e2e",
     "test": "npm run build:packages && npm run test:unit && npm run test:int && npm run test:e2e",
     "test:unit": "npm run test:unit -w @squidflag/api",
     "test:int": "npm run test:int -w @squidflag/api",
     "test:e2e": "npm run test:e2e -w @squidflag/api",
-    "check:boundaries": "depcruise --validate .dependency-cruiser.cjs apps/api/src apps/dashboard/src packages/contracts/src packages/flag-engine/src"
+    "check:boundaries": "depcruise --validate .dependency-cruiser.cjs apps/api/src apps/dashboard/src packages/contracts/src packages/flag-engine/src",
+    "check:architecture": "node scripts/check-architecture.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
@@ -40,6 +41,7 @@
     "dependency-cruiser": "^18.6.0",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import-x": "^4.17.1",
     "globals": "^17.13.0",
     "prettier": "^3.9.10",
     "typescript-eslint": "^8.71.2"

@@ -1,6 +1,7 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import globals from 'globals';
+import importX from 'eslint-plugin-import-x';
 
 export function createTypeScriptConfig(tsconfigRootDir) {
   return tseslint.config(
@@ -20,6 +21,9 @@ export function createTypeScriptConfig(tsconfigRootDir) {
     })),
     {
       files: ['**/*.ts', '**/*.tsx'],
+      plugins: {
+        'import-x': importX,
+      },
       languageOptions: {
         globals: globals.node,
         parserOptions: {
@@ -34,6 +38,23 @@ export function createTypeScriptConfig(tsconfigRootDir) {
             object: 'process',
             property: 'env',
             message: 'Read environment variables only through validated configuration.',
+          },
+        ],
+        'import-x/no-extraneous-dependencies': [
+          'error',
+          {
+            devDependencies: [
+              '**/*.spec.ts',
+              '**/*.test.ts',
+              '**/*.spec.ts',
+              '**/test/**',
+              '**/tests/**',
+              '**/*.config.ts',
+              '**/*.config.js',
+              '**/*.config.mjs',
+            ],
+            optionalDependencies: false,
+            peerDependencies: false,
           },
         ],
         '@typescript-eslint/no-floating-promises': 'error',
@@ -54,7 +75,7 @@ export function createTypeScriptConfig(tsconfigRootDir) {
       },
     },
     {
-      files: ['apps/api/test/setup-e2e.ts'],
+      files: ['prisma.config.ts', 'test/global-setup.ts', 'test/setup-e2e.ts'],
       rules: {
         'no-restricted-properties': 'off',
       },

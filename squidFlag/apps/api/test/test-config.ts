@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-properties */
 export const e2eConfig = {
   NODE_ENV: 'test',
   APP_ROLE: 'all',

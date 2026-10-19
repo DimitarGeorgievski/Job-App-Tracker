@@ -16,6 +16,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   constructor(@Inject(APP_ENV) private readonly env: AppEnv) {
     this.client = new Redis(this.env.REDIS_URL, {
       lazyConnect: true,
+      commandTimeout: 1000,
       maxRetriesPerRequest: 1,
       retryStrategy: (attempt) => Math.min(attempt * 200, 5000),
     });

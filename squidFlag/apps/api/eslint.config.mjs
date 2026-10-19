@@ -8,7 +8,12 @@ const tsconfigRootDir = fileURLToPath(new URL('.', import.meta.url));
 export default defineConfig([
   ...createTypeScriptConfig(tsconfigRootDir),
   {
-    files: ['prisma.config.ts', 'src/platform/config/env.loader.ts'],
+    files: [
+      'prisma.config.ts',
+      'src/platform/config/env.loader.ts',
+      'test/setup-test-env.ts',
+      'test/test-config.ts',
+    ],
     rules: {
       'no-restricted-properties': 'off',
     },

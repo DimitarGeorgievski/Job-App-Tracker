@@ -2,6 +2,7 @@ import { ServiceUnavailableException } from '@nestjs/common';
 import { HealthService } from '../src/platform/health/health.service';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { RedisService } from '../src/platform/redis/redis.service';
+import type { AppEnv } from '../src/platform/config/env.schema';
 
 type RedisServiceMock = {
   isHealthy: jest.Mock<() => Promise<boolean>>;
@@ -21,8 +22,8 @@ describe('HealthService', () => {
     jest.clearAllMocks();
     redisService.isHealthy.mockResolvedValue(true);
     postgresHealth.isHealthy.mockResolvedValue(true);
-
     service = new HealthService(
+      { APP_ROLE: 'all' } as AppEnv,
       redisService as unknown as RedisService,
       postgresHealth,
     );
@@ -65,7 +66,6 @@ describe('HealthService', () => {
   });
   it('returns 503 when a dependency check times out', async () => {
     jest.useFakeTimers();
-
     try {
       redisService.isHealthy.mockReturnValue(new Promise<boolean>(() => {}));
       const readiness = service.checkReadiness();
@@ -128,9 +128,27 @@ describe('HealthService', () => {
       },
     });
   });
-
-  it('checks only Redis when PostgreSQL is not configured', async () => {
-    service = new HealthService(redisService as unknown as RedisService);
+  it('returns 503 when PostgreSQL is missing outside evaluator role', async () => {
+    service = new HealthService(
+      { APP_ROLE: 'control' } as AppEnv,
+      redisService as unknown as RedisService,
+    );
+    const response = await expectUnavailable(service.checkReadiness());
+    expect(response).toEqual({
+      status: 'error',
+      dependencies: {
+        redis: 'connected',
+        postgres: 'unavailable',
+      },
+    });
+    expect(redisService.isHealthy).toHaveBeenCalledTimes(1);
+    expect(postgresHealth.isHealthy).not.toHaveBeenCalled();
+  });
+  it('checks only Redis for evaluator role without PostgreSQL', async () => {
+    service = new HealthService(
+      { APP_ROLE: 'evaluator' } as AppEnv,
+      redisService as unknown as RedisService,
+    );
     await expect(service.checkReadiness()).resolves.toEqual({
       status: 'ok',
       dependencies: {

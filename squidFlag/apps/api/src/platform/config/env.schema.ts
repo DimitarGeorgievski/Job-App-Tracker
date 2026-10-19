@@ -44,8 +44,7 @@ const roleEnvSchema = z.discriminatedUnion('APP_ROLE', [
 ]);
 function validateProductionConfig(env: z.infer<typeof roleEnvSchema>) {
   if (env.NODE_ENV !== 'production') return;
-  if (!env.REDIS_URL?.startsWith('rediss://'))
-    // da ne zaborajs da go izbrisis prasalniko
+  if (!env.REDIS_URL.startsWith('rediss://'))
     throw new Error('Production requires a TLS-enabled REDIS_URL');
   if (!env.CORS_ORIGINS?.trim())
     throw new Error('CORS_ORIGINS is required in production');

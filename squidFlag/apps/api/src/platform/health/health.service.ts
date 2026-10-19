@@ -11,12 +11,15 @@ import {
   POSTGRES_HEALTH_CHECK,
   PostgresHealthCheck,
 } from './postgres-health.token';
+import { APP_ENV } from '../config/app-env.token';
+import { AppEnv } from '../config/env.schema';
 
 @Injectable()
 export class HealthService implements OnModuleDestroy {
   private inFlightCheck: Promise<DependencyChecks> | undefined;
   private shuttingDown = false;
   constructor(
+    @Inject(APP_ENV) private readonly config: AppEnv,
     private readonly redisService: RedisService,
     @Optional()
     @Inject(POSTGRES_HEALTH_CHECK)
@@ -73,9 +76,15 @@ export class HealthService implements OnModuleDestroy {
   }
   private async performChecks(): Promise<DependencyChecks> {
     const redisCheck = this.checkRedis();
+    if (this.config.APP_ROLE === 'evaluator') {
+      return {
+        redis: await redisCheck,
+      };
+    }
     if (!this.postgresHealth) {
       return {
         redis: await redisCheck,
+        postgres: false,
       };
     }
     const [redis, postgres] = await Promise.all([
