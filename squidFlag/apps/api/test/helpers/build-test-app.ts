@@ -5,6 +5,7 @@ import {
 } from '@nestjs/platform-fastify';
 import { randomUUID } from 'node:crypto';
 import { AppModule } from '../../src/app.module';
+import { EvaluatorAppModule } from '../../src/evaluator-app.module';
 import { parseEnv, type AppRole } from '../../src/platform/config/env.schema';
 import { e2eConfig } from '../test-config';
 
@@ -23,7 +24,9 @@ export async function buildTestApp({
     APP_ROLE: role,
   });
   const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule.register(config),
+    role === 'evaluator'
+      ? EvaluatorAppModule.register(config)
+      : AppModule.register(config),
     new FastifyAdapter({
       bodyLimit: 1048576,
       trustProxy: false,

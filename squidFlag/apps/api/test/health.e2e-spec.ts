@@ -1,6 +1,7 @@
 import { type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { afterAll, beforeAll, describe, expect, it, jest } from '@jest/globals';
 import { RedisService } from '../src/platform/redis/redis.service';
+import { PrismaService } from '../src/platform/database/prisma.service';
 import { buildTestApp } from './helpers/build-test-app';
 
 describe('Health endpoint (e2e)', () => {
@@ -51,5 +52,48 @@ describe('Health endpoint (e2e)', () => {
       },
     });
     healthSpy.mockRestore();
+  });
+  it('GET /health/ready returns 503 when PostgreSQL is unhealthy', async () => {
+    const prismaService = app.get(PrismaService);
+    const healthSpy = jest
+      .spyOn(prismaService, 'isHealthy')
+      .mockResolvedValue(false);
+    const response = await app.inject({
+      method: 'GET',
+      url: '/health/ready',
+    });
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({
+      status: 'error',
+      dependencies: {
+        redis: 'connected',
+        postgres: 'unavailable',
+      },
+    });
+    healthSpy.mockRestore();
+  });
+  it('evaluator starts without PostgreSQL and checks only Redis', async () => {
+    const evaluatorApp = await buildTestApp({
+      role: 'evaluator',
+      overrides: {
+        DATABASE_URL: undefined,
+        CORS_ORIGINS: undefined,
+      },
+    });
+    try {
+      const response = await evaluatorApp.inject({
+        method: 'GET',
+        url: '/health/ready',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        status: 'ok',
+        dependencies: {
+          redis: 'connected',
+        },
+      });
+    } finally {
+      await evaluatorApp.close();
+    }
   });
 });

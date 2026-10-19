@@ -3,7 +3,7 @@ import { config as loadDotenv } from 'dotenv';
 import { resolve } from 'node:path';
 /* eslint-disable no-restricted-properties */
 loadDotenv({
-  path: resolve(__dirname, '../.env'),
+  path: resolve(__dirname, '../.env.test'),
   override: false,
   quiet: true,
 });
