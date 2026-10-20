@@ -149,6 +149,18 @@ describe('parseEnv', () => {
       }),
     ).toThrow();
   });
+  it.each([
+    'db://localhost:5432/squidflag',
+    'mysql://localhost:3306/squidflag',
+    'http://localhost:5432/squidflag',
+  ])('rejects a DATABASE_URL with unsupported protocol: %s', (DATABASE_URL) => {
+    expect(() =>
+      parseEnv({
+        ...testEnv,
+        DATABASE_URL,
+      }),
+    ).toThrow('DATABASE_URL must use PostgreSQL');
+  });
   it('reports multiple invalid environment variables', () => {
     try {
       parseEnv({

@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import { Test } from '@nestjs/testing';
 import { parseEnv } from '../src/platform/config/env.schema';
 import { EvaluatorAppModule } from '../src/evaluator-app.module';
+import { PrismaService } from '../src/platform/database/prisma.service';
 
 describe('EvaluatorAppModule', () => {
   it('boots without registering Prisma dependencies', async () => {
@@ -13,6 +14,21 @@ describe('EvaluatorAppModule', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [EvaluatorAppModule.register(config)],
     }).compile();
+    await moduleRef.close();
+  });
+  it('does not register Prisma when DATABASE_URL is set', async () => {
+    const config = parseEnv({
+      APP_ROLE: 'evaluator',
+      REDIS_URL: 'redis://localhost:6379',
+      DATABASE_URL: 'postgresql://user:password@localhost:5432/squidflag',
+    });
+    expect(config.DATABASE_URL).toBe(
+      'postgresql://user:password@localhost:5432/squidflag',
+    );
+    const moduleRef = await Test.createTestingModule({
+      imports: [EvaluatorAppModule.register(config)],
+    }).compile();
+    expect(() => moduleRef.get(PrismaService)).toThrow();
     await moduleRef.close();
   });
 });

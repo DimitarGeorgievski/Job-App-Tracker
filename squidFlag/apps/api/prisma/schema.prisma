@@ -11,3 +11,242 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum FlagType {
+  BOOLEAN
+}
+
+enum SdkKeyType {
+  SERVER
+  CLIENT
+}
+
+enum PublishedSnapshotStatus {
+  PENDING
+  ACTIVE
+  SUPERSEDED
+  FAILED
+}
+
+model User {
+  id               String              @id @default(uuid(7)) @db.Uuid
+  email            String              @unique
+  passwordHash     String
+  disabledAt       DateTime?           @db.Timestamptz(3)
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @db.Timestamptz(3)
+  memberships      Membership[]
+  refreshTokens    RefreshToken[]
+  createdSdkKeys   SdkKey[]
+  createdSnapshots PublishedSnapshot[]
+
+  @@map("User")
+}
+
+model Organization {
+  id          String       @id @default(uuid(7)) @db.Uuid
+  name        String
+  slug        String       @unique
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
+  archivedAt  DateTime?    @db.Timestamptz(3)
+  projects    Project[]
+  memberships Membership[]
+  auditLogs   AuditLog[]
+
+  @@map("Organization")
+}
+
+model Membership {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  organizationId String         @db.Uuid
+  userId         String         @db.Uuid
+  role           MembershipRole
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime       @updatedAt @db.Timestamptz(3)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, userId])
+  @@index([userId, organizationId])
+  @@index([organizationId, createdAt(sort: Desc), id(sort: Desc)])
+  @@map("Membership")
+}
+
+model Project {
+  id             String        @id @default(uuid(7)) @db.Uuid
+  organizationId String        @db.Uuid
+  name           String
+  slug           String
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
+  archivedAt     DateTime?     @db.Timestamptz(3)
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  environments   Environment[]
+  flags          FeatureFlag[]
+
+  @@unique([organizationId, slug])
+  @@unique([organizationId, id])
+  @@map("Project")
+}
+
+model AuditLog {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @db.Uuid
+  actorUserId    String?      @db.Uuid
+  actorLabel     String
+  action         String
+  targetType     String
+  targetId       String?      @db.Uuid
+  metadata       Json
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  requestId      String?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt(sort: Desc), id(sort: Desc)])
+  @@map("AuditLog")
+}
+
+model Environment {
+  id                 String                  @id @default(uuid(7)) @db.Uuid
+  organizationId     String                  @db.Uuid
+  projectId          String                  @db.Uuid
+  key                String
+  name               String
+  draftRevision      Int                     @default(0)
+  createdAt          DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime                @updatedAt @db.Timestamptz(3)
+  archivedAt         DateTime?               @db.Timestamptz(3)
+  project            Project                 @relation(fields: [organizationId, projectId], references: [organizationId, id], onDelete: Restrict)
+  flagConfigs        FlagEnvironmentConfig[]
+  sdkKeys            SdkKey[]
+  publishedSnapshots PublishedSnapshot[]
+
+  @@unique([projectId, key])
+  @@unique([organizationId, id])
+  @@unique([organizationId, projectId, id])
+  @@map("Environment")
+}
+
+model FeatureFlag {
+  id                 String                  @id @default(uuid(7)) @db.Uuid
+  organizationId     String                  @db.Uuid
+  projectId          String                  @db.Uuid
+  key                String
+  name               String
+  description        String?
+  flagType           FlagType                @default(BOOLEAN)
+  createdAt          DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime                @updatedAt @db.Timestamptz(3)
+  archivedAt         DateTime?               @db.Timestamptz(3)
+  project            Project                 @relation(fields: [organizationId, projectId], references: [organizationId, id], onDelete: Restrict)
+  environmentConfigs FlagEnvironmentConfig[]
+
+  @@unique([projectId, key])
+  @@unique([organizationId, projectId, id])
+  @@map("FeatureFlag")
+}
+
+model FlagEnvironmentConfig {
+  id             String      @id @default(uuid(7)) @db.Uuid
+  organizationId String      @db.Uuid
+  projectId      String      @db.Uuid
+  environmentId  String      @db.Uuid
+  flagId         String      @db.Uuid
+  enabled        Boolean     @default(false)
+  defaultValue   Boolean
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
+  environment    Environment @relation(fields: [organizationId, projectId, environmentId], references: [organizationId, projectId, id], onDelete: Restrict)
+  flag           FeatureFlag @relation(fields: [organizationId, projectId, flagId], references: [organizationId, projectId, id], onDelete: Restrict)
+  rules          FlagRule[]
+
+  @@unique([environmentId, flagId])
+  @@unique([organizationId, id])
+  @@map("FlagEnvironmentConfig")
+}
+
+model FlagRule {
+  id                      String                @id @default(uuid(7)) @db.Uuid
+  organizationId          String                @db.Uuid
+  flagEnvironmentConfigId String                @db.Uuid
+  priority                Int
+  conditions              Json
+  result                  Boolean
+  createdAt               DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime              @updatedAt @db.Timestamptz(3)
+  flagEnvironmentConfig   FlagEnvironmentConfig @relation(fields: [organizationId, flagEnvironmentConfigId], references: [organizationId, id], onDelete: Restrict)
+
+  @@index([flagEnvironmentConfigId, priority, id])
+  @@map("FlagRule")
+}
+
+model SdkKey {
+  id              String      @id @default(uuid(7)) @db.Uuid
+  organizationId  String      @db.Uuid
+  environmentId   String      @db.Uuid
+  keyHash         String      @unique
+  type            SdkKeyType
+  label           String
+  prefix          String
+  last4           String
+  createdByUserId String      @db.Uuid
+  createdAt       DateTime    @default(now()) @db.Timestamptz(3)
+  expiresAt       DateTime?   @db.Timestamptz(3)
+  revokedAt       DateTime?   @db.Timestamptz(3)
+  lastUsedAt      DateTime?   @db.Timestamptz(3)
+  environment     Environment @relation(fields: [organizationId, environmentId], references: [organizationId, id], onDelete: Restrict)
+  createdBy       User        @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@map("SdkKey")
+}
+
+model PublishedSnapshot {
+  id              String                  @id @default(uuid(7)) @db.Uuid
+  organizationId  String                  @db.Uuid
+  projectId       String                  @db.Uuid
+  environmentId   String                  @db.Uuid
+  version         Int
+  status          PublishedSnapshotStatus @default(PENDING)
+  storageKey      String
+  checksum        String
+  sizeBytes       Int
+  draftRevision   Int
+  sourceVersion   Int?
+  comment         String?
+  createdAt       DateTime                @default(now()) @db.Timestamptz(3)
+  createdByUserId String                  @db.Uuid
+  failureCode     String?
+  activatedAt     DateTime?               @db.Timestamptz(3)
+  environment     Environment             @relation(fields: [organizationId, projectId, environmentId], references: [organizationId, projectId, id], onDelete: Restrict)
+  createdBy       User                    @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([environmentId, version])
+  @@map("PublishedSnapshot")
+}
+
+model RefreshToken {
+  id                String        @id @default(uuid(7)) @db.Uuid
+  userId            String        @db.Uuid
+  tokenHash         String        @unique
+  familyId          String        @db.Uuid
+  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
+  expiresAt         DateTime      @db.Timestamptz(3)
+  revokedAt         DateTime?     @db.Timestamptz(3)
+  replacedByTokenId String?       @unique @db.Uuid
+  usedAt            DateTime?     @db.Timestamptz(3)
+  user              User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  replacedBy        RefreshToken? @relation("RefreshTokenRotation", fields: [replacedByTokenId], references: [id], onDelete: SetNull)
+  replaces          RefreshToken? @relation("RefreshTokenRotation")
+
+  @@index([familyId])
+  @@index([expiresAt, id])
+  @@map("RefreshToken")
+}

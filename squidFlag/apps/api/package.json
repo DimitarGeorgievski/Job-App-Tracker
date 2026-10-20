@@ -21,11 +21,14 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
-    "postinstall": "prisma skills sync || exit 0",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:int": "jest --config ./test/jest-int.json --runInBand",
     "test:unit": "jest --runInBand",
-    "prisma:generate": "prisma generate --config prisma.config.ts"
+    "db:generate": "prisma generate --schema prisma/schema.prisma",
+    "db:validate": "prisma validate --schema prisma/schema.prisma",
+    "db:migrate:create": "prisma migrate dev --config prisma.config.ts --create-only",
+    "db:migrate": "prisma migrate dev --config prisma.config.ts",
+    "db:migrate:status": "prisma migrate status --config prisma.config.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
