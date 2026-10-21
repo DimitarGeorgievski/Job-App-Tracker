@@ -83,6 +83,13 @@ jobs:
       - name: Audit production dependencies
         continue-on-error: true
         run: npm audit --omit=dev --audit-level=high
+      - name: Apply Prisma migrations to E2E database
+        env:
+          MIGRATOR_DATABASE_URL: ${{ env.E2E_DATABASE_URL }}
+        run: >-
+          npx prisma migrate deploy
+          --config apps/api/prisma.config.ts
+          --schema apps/api/prisma/schema.prisma
       - name: Apply Prisma migrations to privilege-test database
         run: >-
           npx prisma migrate deploy
