@@ -5,6 +5,7 @@ import { PrismaModule } from '../src/platform/database/prisma.module';
 import { PrismaService } from '../src/platform/database/prisma.service';
 import { e2eConfig } from './test-config';
 import { assertTestDatabase } from './assert-test-database';
+import { randomUUID } from 'node:crypto';
 
 describe('PrismaService (integration)', () => {
   let moduleRef: TestingModule;
@@ -25,5 +26,24 @@ describe('PrismaService (integration)', () => {
     await expect(prismaService.$queryRaw`SELECT 1`).resolves.toEqual([
       { '?column?': 1 },
     ]);
+  });
+  it('generates UUIDv7 IDs for new users', async () => {
+    const email = `uuidv7-${randomUUID()}@example.com`;
+    try {
+      const user = await prismaService.user.create({
+        data: {
+          email,
+          passwordHash: 'integration-test',
+        },
+        select: { id: true },
+      });
+      expect(user.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+    } finally {
+      await prismaService.user.deleteMany({
+        where: { email },
+      });
+    }
   });
 });

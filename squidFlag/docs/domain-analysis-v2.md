@@ -1308,7 +1308,6 @@ The runtime application role must not own these tables.
 - **Prisma UUIDv7 default semantics** — Owner: project developer. Trigger: before writing schema/migration. Run a minimal Prisma 7.10 insert test and inspect generated SQL; do not assume PostgreSQL 17 has native `uuidv7()`.
 - **RLS policy SQL and second context setting `app.current_user_id`** — Owner: project developer. Trigger: Phase 4 hardening. Policies must avoid recursive Membership/Organization lookups by using a narrowly scoped security-definer helper with fixed `search_path`, or another tested non-recursive policy design; no broad BYPASSRLS runtime role.
 - **`db://` validation and evaluator config semantics** — Owner: project developer. Trigger: before Step 2. Inspect `env.schema`, `loadEnvironment`, and `AppModule.register`; explicitly test whether `db://` is rejected and whether evaluator omits Prisma even when `DATABASE_URL` is present.
-- **`prisma skills sync` behavior** — Owner: project developer. Trigger: before Step 2. Verify whether this command exists in installed Prisma CLI/tooling and whether it changes files; do not assume it is a standard Prisma command.
 - **SDK key storage/cache transport implementation** — Owner: project developer. Trigger: before evaluator implementation. Keep key index in Redis and published payload in R2; document readiness semantics and reconciliation behavior.
 
 ---
@@ -1443,16 +1442,6 @@ Verify these behaviors explicitly:
   configuration as intended.
 
 Add or update tests for the confirmed behavior.
-
-### 2.3 Prisma Skills synchronization
-
-**Decision:** Do not run `prisma skills sync` during installation.
-
-**Verification:** Prisma CLI 7.10.1 reports `Unknown command "skills"`.
-
-**Reason:** AI coding-agent instructions are optional development
-tooling and are not required for application runtime, Prisma Client
-generation, or database migrations.
 
 ### 2.4 Worker and migration credentials
 

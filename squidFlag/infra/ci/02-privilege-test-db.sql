@@ -1,0 +1,40 @@
+CREATE ROLE migrator
+  LOGIN
+  NOSUPERUSER
+  CREATEDB
+  NOCREATEROLE
+  NOINHERIT
+  NOREPLICATION
+  NOBYPASSRLS
+  PASSWORD 'ci-migrator-password';
+
+CREATE ROLE app
+  LOGIN
+  NOSUPERUSER
+  NOCREATEDB
+  NOCREATEROLE
+  NOINHERIT
+  NOREPLICATION
+  NOBYPASSRLS
+  PASSWORD 'ci-app-password';
+
+CREATE ROLE worker
+  LOGIN
+  NOSUPERUSER
+  NOCREATEDB
+  NOCREATEROLE
+  NOINHERIT
+  NOREPLICATION
+  NOBYPASSRLS
+  PASSWORD 'ci-worker-password';
+
+CREATE DATABASE squidflag_privilege_test OWNER migrator;
+
+GRANT CONNECT ON DATABASE squidflag_privilege_test TO app, worker;
+
+\connect squidflag_privilege_test
+
+GRANT USAGE, CREATE ON SCHEMA public TO migrator;
+GRANT CONNECT ON DATABASE squidflag_privilege_test TO migrator;
+GRANT USAGE ON SCHEMA public TO app, worker;
+REVOKE CREATE ON SCHEMA public FROM app, worker;
