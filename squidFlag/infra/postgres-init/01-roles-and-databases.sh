@@ -57,3 +57,19 @@ psql \
 GRANT CONNECT ON DATABASE squidflag_test TO migrator;
 GRANT USAGE, CREATE ON SCHEMA public TO migrator;
 SQL
+psql \
+  --username "$POSTGRES_USER" \
+  --dbname postgres \
+  --set=ON_ERROR_STOP=1 <<'SQL'
+CREATE DATABASE squidflag_privilege_test OWNER migrator;
+GRANT CONNECT ON DATABASE squidflag_privilege_test TO app, worker;
+SQL
+psql \
+  --username "$POSTGRES_USER" \
+  --dbname squidflag_privilege_test \
+  --set=ON_ERROR_STOP=1 <<'SQL'
+GRANT CONNECT ON DATABASE squidflag_privilege_test TO migrator;
+GRANT USAGE, CREATE ON SCHEMA public TO migrator;
+GRANT USAGE ON SCHEMA public TO app, worker;
+REVOKE CREATE ON SCHEMA public FROM app, worker;
+SQL

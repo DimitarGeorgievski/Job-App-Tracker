@@ -1,5 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
+import { afterAll, beforeAll, describe, expect, it, jest } from '@jest/globals';
 import { RedisModule } from '../src/platform/redis/redis.module';
 import { RedisService } from '../src/platform/redis/redis.service';
 import { parseEnv } from '../src/platform/config/env.schema';
@@ -38,6 +38,33 @@ describe('RedisService (integration)', () => {
       );
     } finally {
       await redisService.getClient().del(key);
+    }
+  });
+  it('reports unhealthy when Redis is not ready', async () => {
+    const client = redisService.getClient();
+    const originalStatus = client.status;
+    Object.defineProperty(client, 'status', {
+      configurable: true,
+      value: 'end',
+    });
+    try {
+      await expect(redisService.isHealthy()).resolves.toBe(false);
+    } finally {
+      Object.defineProperty(client, 'status', {
+        configurable: true,
+        value: originalStatus,
+      });
+    }
+  });
+  it('reports unhealthy when Redis PING fails', async () => {
+    const client = redisService.getClient();
+    const pingSpy = jest
+      .spyOn(client, 'ping')
+      .mockRejectedValue(new Error('Redis connection failed'));
+    try {
+      await expect(redisService.isHealthy()).resolves.toBe(false);
+    } finally {
+      pingSpy.mockRestore();
     }
   });
 });

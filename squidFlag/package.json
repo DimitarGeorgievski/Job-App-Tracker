@@ -38,7 +38,10 @@
     "db:validate": "npm run db:validate -w @squidflag/api",
     "db:migrate:create": "npm run db:migrate:create -w @squidflag/api",
     "db:migrate": "npm run db:migrate -w @squidflag/api",
-    "db:migrate:status": "npm run db:migrate:status -w @squidflag/api"
+    "db:migrate:status": "npm run db:migrate:status -w @squidflag/api",
+    "db:migrate:test:e2e": "node -e \"require('dotenv').config({path:'apps/api/.env.test'}); process.env.MIGRATOR_DATABASE_URL=process.env.E2E_DATABASE_URL; require('child_process').execFileSync('npx', ['prisma','migrate','deploy','--config','apps/api/prisma.config.ts','--schema','apps/api/prisma/schema.prisma'], {stdio:'inherit', env:process.env})\"",
+    "db:migrate:test:privileges": "npx prisma migrate deploy --config apps/api/prisma.config.ts --schema apps/api/prisma/schema.prisma",
+    "db:setup:test": "npm run db:migrate:test:e2e && npm run db:migrate:test:privileges"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
