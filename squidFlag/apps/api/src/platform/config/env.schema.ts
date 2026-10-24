@@ -1,3 +1,4 @@
+import { Protocol } from '@aws-sdk/client-s3';
 import { z } from 'zod';
 
 const nodeEnvSchema = z.enum(['development', 'test', 'staging', 'production']);
@@ -16,6 +17,10 @@ const baseEnvSchema = z.object({
       (value) => value.startsWith('redis://') || value.startsWith('rediss://'),
       'REDIS_URL must use redis:// or rediss://',
     ),
+  R2_ENDPOINT: z.url({ error: 'R2_ENDPOINT must be a valid HTTPS URL', protocol: /^https$/ }).optional(),
+  R2_BUCKET: z.string().trim().min(1).optional(),
+  R2_ACCESS_KEY_ID: z.string().trim().min(1).optional(),
+  R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   DATABASE_URL: z.string().trim().min(1).optional(),
   CORS_ORIGINS: z.string().optional(),
 });

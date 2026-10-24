@@ -9,6 +9,7 @@ import { APP_ENV } from './platform/config/app-env.token';
 import type { AppEnv } from './platform/config/env.schema';
 import { HealthService } from './platform/health/health.service';
 import { HealthController } from './platform/health/health.controller';
+import { R2Module } from './platform/storage/r2/r2.module';
 
 @Module({})
 export class AppModule {
@@ -19,6 +20,7 @@ export class AppModule {
         LoggerModule.forRoot(createPinoConfig(config)),
         RedisModule.register(config),
         PrismaModule.register(config),
+        R2Module.register(config),
       ],
       controllers: [AppController, HealthController],
       providers: [

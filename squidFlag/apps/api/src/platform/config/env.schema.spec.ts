@@ -18,6 +18,20 @@ describe('parseEnv', () => {
       }).APP_ROLE,
     ).toBe('control');
   });
+  it('accepts valid R2 configuration', () => {
+    expect(
+      parseEnv({
+        ...testEnv,
+        R2_ENDPOINT: 'https://example.r2.cloudflarestorage.com',
+        R2_BUCKET: 'squidflag',
+        R2_ACCESS_KEY_ID: 'test-access-key',
+        R2_SECRET_ACCESS_KEY: 'test-secret-key',
+      }).R2_BUCKET,
+    ).toBe('squidflag');
+  });
+  it('allows missing R2 configuration until storage is enabled', () => {
+    expect(parseEnv(testEnv).R2_BUCKET).toBeUndefined();
+  });
   it('uses default HOST and PORT values', () => {
     const env = parseEnv(testEnv);
     expect(env.HOST).toBe('localhost');
