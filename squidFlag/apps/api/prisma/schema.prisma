@@ -71,8 +71,8 @@ model Membership {
   role           MembershipRole
   createdAt      DateTime       @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime       @updatedAt @db.Timestamptz(3)
-  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  user           User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([organizationId, userId])
   @@index([userId, organizationId])
@@ -88,7 +88,7 @@ model Project {
   createdAt      DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
   archivedAt     DateTime?     @db.Timestamptz(3)
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   environments   Environment[]
   flags          FeatureFlag[]
 
@@ -108,7 +108,7 @@ model AuditLog {
   metadata       Json
   createdAt      DateTime     @default(now()) @db.Timestamptz(3)
   requestId      String?
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([organizationId, createdAt(sort: Desc), id(sort: Desc)])
   @@map("AuditLog")
@@ -124,7 +124,7 @@ model Environment {
   createdAt          DateTime                @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime                @updatedAt @db.Timestamptz(3)
   archivedAt         DateTime?               @db.Timestamptz(3)
-  project            Project                 @relation(fields: [organizationId, projectId], references: [organizationId, id], onDelete: Restrict)
+  project            Project                 @relation(fields: [organizationId, projectId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   flagConfigs        FlagEnvironmentConfig[]
   sdkKeys            SdkKey[]
   publishedSnapshots PublishedSnapshot[]
@@ -146,7 +146,7 @@ model FeatureFlag {
   createdAt          DateTime                @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime                @updatedAt @db.Timestamptz(3)
   archivedAt         DateTime?               @db.Timestamptz(3)
-  project            Project                 @relation(fields: [organizationId, projectId], references: [organizationId, id], onDelete: Restrict)
+  project            Project                 @relation(fields: [organizationId, projectId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   environmentConfigs FlagEnvironmentConfig[]
 
   @@unique([projectId, key])
@@ -164,8 +164,8 @@ model FlagEnvironmentConfig {
   defaultValue   Boolean
   createdAt      DateTime    @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
-  environment    Environment @relation(fields: [organizationId, projectId, environmentId], references: [organizationId, projectId, id], onDelete: Restrict)
-  flag           FeatureFlag @relation(fields: [organizationId, projectId, flagId], references: [organizationId, projectId, id], onDelete: Restrict)
+  environment    Environment @relation(fields: [organizationId, projectId, environmentId], references: [organizationId, projectId, id], onDelete: Restrict, onUpdate: Restrict)
+  flag           FeatureFlag @relation(fields: [organizationId, projectId, flagId], references: [organizationId, projectId, id], onDelete: Restrict, onUpdate: Restrict)
   rules          FlagRule[]
 
   @@unique([environmentId, flagId])
@@ -182,7 +182,7 @@ model FlagRule {
   result                  Boolean
   createdAt               DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt               DateTime              @updatedAt @db.Timestamptz(3)
-  flagEnvironmentConfig   FlagEnvironmentConfig @relation(fields: [organizationId, flagEnvironmentConfigId], references: [organizationId, id], onDelete: Restrict)
+  flagEnvironmentConfig   FlagEnvironmentConfig @relation(fields: [organizationId, flagEnvironmentConfigId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([flagEnvironmentConfigId, priority, id])
   @@map("FlagRule")
@@ -202,8 +202,8 @@ model SdkKey {
   expiresAt       DateTime?   @db.Timestamptz(3)
   revokedAt       DateTime?   @db.Timestamptz(3)
   lastUsedAt      DateTime?   @db.Timestamptz(3)
-  environment     Environment @relation(fields: [organizationId, environmentId], references: [organizationId, id], onDelete: Restrict)
-  createdBy       User        @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  environment     Environment @relation(fields: [organizationId, environmentId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  createdBy       User        @relation(fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   @@map("SdkKey")
 }
@@ -225,8 +225,8 @@ model PublishedSnapshot {
   createdByUserId String                  @db.Uuid
   failureCode     String?
   activatedAt     DateTime?               @db.Timestamptz(3)
-  environment     Environment             @relation(fields: [organizationId, projectId, environmentId], references: [organizationId, projectId, id], onDelete: Restrict)
-  createdBy       User                    @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  environment     Environment             @relation(fields: [organizationId, projectId, environmentId], references: [organizationId, projectId, id], onDelete: Restrict, onUpdate: Restrict)
+  createdBy       User                    @relation(fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([environmentId, version])
   @@map("PublishedSnapshot")
@@ -242,8 +242,8 @@ model RefreshToken {
   revokedAt         DateTime?     @db.Timestamptz(3)
   replacedByTokenId String?       @unique @db.Uuid
   usedAt            DateTime?     @db.Timestamptz(3)
-  user              User          @relation(fields: [userId], references: [id], onDelete: Restrict)
-  replacedBy        RefreshToken? @relation("RefreshTokenRotation", fields: [replacedByTokenId], references: [id], onDelete: SetNull)
+  user              User          @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  replacedBy        RefreshToken? @relation("RefreshTokenRotation", fields: [replacedByTokenId], references: [id], onDelete: SetNull, onUpdate: Restrict)
   replaces          RefreshToken? @relation("RefreshTokenRotation")
 
   @@index([familyId])

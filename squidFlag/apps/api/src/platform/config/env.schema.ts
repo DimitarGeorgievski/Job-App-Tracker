@@ -1,4 +1,3 @@
-import { Protocol } from '@aws-sdk/client-s3';
 import { z } from 'zod';
 
 const nodeEnvSchema = z.enum(['development', 'test', 'staging', 'production']);
@@ -17,7 +16,12 @@ const baseEnvSchema = z.object({
       (value) => value.startsWith('redis://') || value.startsWith('rediss://'),
       'REDIS_URL must use redis:// or rediss://',
     ),
-  R2_ENDPOINT: z.url({ error: 'R2_ENDPOINT must be a valid HTTPS URL', protocol: /^https$/ }).optional(),
+  R2_ENDPOINT: z
+    .url({
+      error: 'R2_ENDPOINT must be a valid HTTPS URL',
+      protocol: /^https$/,
+    })
+    .optional(),
   R2_BUCKET: z.string().trim().min(1).optional(),
   R2_ACCESS_KEY_ID: z.string().trim().min(1).optional(),
   R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
@@ -42,10 +46,15 @@ const roleEnvSchema = z.discriminatedUnion('APP_ROLE', [
     DATABASE_URL: databaseUrlSchema,
     CORS_ORIGINS: z.string().trim().min(1),
   }),
-  baseEnvSchema.extend({
-    APP_ROLE: z.literal('evaluator'),
-    DATABASE_URL: databaseUrlSchema.optional(),
-  }),
+  baseEnvSchema
+    .extend({
+      APP_ROLE: z.literal('evaluator'),
+    })
+    .refine((env) => env.DATABASE_URL === undefined, {
+      message:
+        'Evaluator must not have DATABASE_URL set; it reads only from Redis and R2',
+      path: ['DATABASE_URL'],
+    }),
 ]);
 function validateProductionConfig(env: z.infer<typeof roleEnvSchema>) {
   if (env.NODE_ENV !== 'production') return;

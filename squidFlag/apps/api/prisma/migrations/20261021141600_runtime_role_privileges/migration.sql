@@ -33,7 +33,6 @@ REVOKE UPDATE ON TABLE "PublishedSnapshot" FROM app;
 GRANT UPDATE ("status", "activatedAt", "failureCode")
   ON TABLE "PublishedSnapshot" TO app;
 
--- Worker is read-only.
 GRANT SELECT ON TABLE
   "User",
   "Organization",
@@ -43,11 +42,11 @@ GRANT SELECT ON TABLE
   "FeatureFlag",
   "FlagEnvironmentConfig",
   "FlagRule",
-  "RefreshToken",
   "AuditLog",
-  "SdkKey",
-  "PublishedSnapshot"
+  "SdkKey"
 TO worker;
+GRANT SELECT, UPDATE ("status", "failureCode") ON TABLE "PublishedSnapshot" TO worker;
+GRANT SELECT, DELETE, UPDATE ("revokedAt") ON TABLE "RefreshToken" TO worker;
 
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
   ON TABLE
@@ -59,8 +58,15 @@ REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
   "FeatureFlag",
   "FlagEnvironmentConfig",
   "FlagRule",
-  "RefreshToken",
   "AuditLog",
-  "SdkKey",
-  "PublishedSnapshot"
+  "SdkKey"
 FROM worker;
+REVOKE INSERT, DELETE, TRUNCATE, REFERENCES, TRIGGER
+  ON TABLE "PublishedSnapshot" FROM worker;
+  
+REVOKE UPDATE ON TABLE "PublishedSnapshot" FROM worker;
+GRANT UPDATE ("status", "failureCode") ON TABLE "PublishedSnapshot" TO worker;
+
+REVOKE INSERT, UPDATE, TRUNCATE, REFERENCES, TRIGGER
+  ON TABLE "RefreshToken" FROM worker;
+GRANT SELECT, DELETE, UPDATE ("revokedAt") ON TABLE "RefreshToken" TO worker;

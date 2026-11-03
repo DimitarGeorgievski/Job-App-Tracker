@@ -5,3 +5,4 @@ dist/
 .env*
 !.env.example
 !.env.test.example
+CLAUDE.MD

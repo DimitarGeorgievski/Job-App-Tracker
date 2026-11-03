@@ -46,6 +46,14 @@ describe('parseEnv', () => {
       }).APP_ROLE,
     ).toBe('evaluator');
   });
+  it('rejects evaluator with DATABASE_URL set', () => {
+    expect(() =>
+      parseEnv({
+        ...testEnv,
+        APP_ROLE: 'evaluator',
+      }),
+    ).toThrow('Evaluator must not have DATABASE_URL set');
+  });
   it('requires CORS_ORIGINS for all role', () => {
     const { CORS_ORIGINS: _, ...envWithoutCors } = testEnv;
     expect(() => parseEnv(envWithoutCors)).toThrow();

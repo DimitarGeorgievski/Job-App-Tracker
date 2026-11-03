@@ -41,8 +41,8 @@ Frequency and result size are estimates for the initial product; validate them a
 |   7 | Lock environment row for publish                                          | Control              | Each publish                                    | 1 row                                                        | Fetch and lock the environment by ID inside the transaction                                                                                                                                  | No additional index; the primary key on the environment ID is sufficient.                                                                                                                                                            |
 |   8 | Fetch current published version                                           | Control/data         | Frequent for SDK cache refresh and dashboard    | 0–1 active snapshot                                          | Filter by environment and active status                                                                                                                                                      | Yes: partial unique index allowing only one `ACTIVE` snapshot per environment.                                                                                                                                                       |
 |   9 | List version history for an environment, newest first                     | Control              | Occasional dashboard use                        | Page of versions                                             | Filter by `environmentId`; order by `version DESC`, according to the pagination cursor                                                                                                       | Yes: UNIQUE `(environmentId, version)` supports version-history lookup and descending version pagination through a backward index scan. Do not add a duplicated index unless a measured query plan justifies it.                     |
-|  10 | Resolve an SDK key (cache miss only)                                      | Data                 | Frequent; Redis lookup on SDK request           | 0–1 key record                                               | The evaluator resolves the presented key through the Redis SDK-key index and validates cached status and expiry. The evaluator must never query PostgreSQL, including on a Redis cache miss. | PostgreSQL requires a unique index on the key hash for control-plane integrity. Redis maintains the runtime key index.                                                                                                               |
-|  11 | List keys for an environment                                              | Control              | Occasional settings page                        | Small list                                                   | Filter by `environmentId`; include active/revoked status as required; sort newest first                                                                                                      | Maybe: `(environmentId, createdAt DESC)` only if list size or measured latency justifies it.                                                                                                                                         |
+|  10 | Resolve an SDK key (Redis only; evaluator never queries PostgreSQL)       | Data                 | Frequent; Redis lookup on SDK request           | 0–1 key record                                               | The evaluator resolves the presented key through the Redis SDK-key index and validates cached status and expiry. The evaluator must never query PostgreSQL, including on a Redis cache miss. | PostgreSQL requires a unique index on the key hash for control-plane integrity. Redis maintains the runtime key index.                                                                                                               |
+|  11 | List keys for an environment                                              | Control              | Occasional settings page                        | Small list                                                   | Filter by `environmentId`; include active/revoked status as required; sort newest first                                                                                                      | Yes: `(environmentId, createdAt DESC, id DESC)` supports the settings page listing. The composite FK `(organizationId, environmentId)` provides the filter; this index adds ordering for the small per-environment list.             |
 |  12 | Audit log by organization, newest first, paginated                        | Control              | Frequent enough for investigations              | One page                                                     | Filter by `organizationId`; order by `createdAt DESC` with stable tie-breaker `id`                                                                                                           | Yes: `(organizationId, createdAt DESC, id DESC)`.                                                                                                                                                                                    |
 |  13 | Check flag-key uniqueness on create/rename                                | Control              | Every flag create/rename                        | Existence check, 0–1 row                                     | Scope normalized key to `projectId`; archived flag keys remain reserved.                                                                                                                     | Yes: unique `(projectId, key)`. Archived flag keys remain reserved, so the uniqueness constraint applies to all flags, including archived ones. A separate listing index is deferred unless measured query performance justifies it. |
 |  14 | Authorize a user's organization role                                      | Control              | On protected organization requests              | 0–1 membership                                               | Lookup membership by `(organizationId, userId)`                                                                                                                                              | Yes: unique `(organizationId, userId)` plus reverse index `(userId, organizationId)` for user-first lookups.                                                                                                                         |
@@ -62,8 +62,6 @@ Frequency and result size are estimates for the initial product; validate them a
   their write cost.
 - Prefer a composite index that matches the actual filter/order rather
   than multiple speculative single-column indexes.
-- Confirm pagination style (offset vs cursor), ordering, archive
-  semantics, and expected cardinality before finalizing indexes.
 - A foreign key does not automatically create an index on the
   referencing columns in PostgreSQL.
 
@@ -280,7 +278,7 @@ Rule conditions are JSONB validated by application schemas. The rule result is a
 **Unique / indexes:**
 
 - `UNIQUE (keyHash)` for key-hash integrity.
-- `(environmentId, createdAt DESC, id DESC)` for access pattern #11 is deferred. Add it only if measured list size or query latency justifies it.
+- `(environmentId, createdAt DESC, id DESC)` for access pattern #11 supports the settings page listing.
 - Partial index `(id) WHERE revokedAt IS NULL` for access pattern #20.
 
 Only a cryptographic hash of a sufficiently random key is stored. The raw secret is displayed once at creation or rotation.
@@ -648,17 +646,11 @@ These are transaction-level scenarios to test after the schema and application o
 1. Both requests target the same environment and include an expected draft revision.
 2. Each publication operation acquires the environment lock using `SELECT ... FOR UPDATE`, or an equivalent serialization mechanism.
 3. The winning request verifies the expected draft revision, allocates the next version while holding the environment lock, and inserts a `PENDING` snapshot row within a transaction. Version allocation must not rely on a value read before acquiring the lock.
-4. If archiving commits before the activation transaction acquires the project lock, activation must observe the archived state and abort. Any already-uploaded but unactivated R2 object is handled by the reconciliation/cleanup policy.
-5. If publication reserves its `PENDING` snapshot first, archiving may still commit while the R2 upload is in progress because the upload occurs outside the database transaction. The activation transaction must therefore recheck the project and environment archive state while holding the project lock before activating the snapshot.
-
-**Expected result:** No publication can activate a snapshot after the
-project or environment has been archived. Locking and rechecking state
-inside the activation transaction—not an earlier application-level
-check—must prevent the race. 6. The competing request must recheck the current revision and publication state after acquiring its lock. It must return a conflict if its expected revision is stale or another pending publication already exists.
+4. The competing request must recheck the current revision and publication state after acquiring its lock. It must return a conflict if its expected revision is stale or another pending publication already exists.
 
 **Rows and constraints involved:** `Environment`; `PublishedSnapshot`; unique `(environmentId, version)`; partial unique indexes allowing at most one `ACTIVE` and one `PENDING` snapshot per environment.
 
-**Expected result:** No publication can activate a snapshot after the project or environment has been archived. Locking and rechecking state inside the activation transaction—not an earlier application-level check—must prevent the race.
+**Expected result:** Only one publication succeeds. The losing request receives HTTP 409 Conflict. The partial unique indexes prevent duplicate ACTIVE or PENDING snapshots per environment.
 
 ## E3. A project is archived while a publish is in flight
 
@@ -667,11 +659,13 @@ check—must prevent the race. 6. The competing request must recheck the current
 3. Publishing verifies that the project and environment are not archived before reserving or activating a publication, according to the publication lifecycle.
 4. If archiving acquires its lock first and commits, publishing must observe the archived state and abort.
 5. If publishing acquires its lock first, archiving waits until the publication transaction releases its lock. The publication may finish first, after which archiving proceeds and prevents future publications.
-6. Physical deletion is not used for normal archival. Foreign-key restrictions protect retained snapshots and history.
+6. If archiving commits before the activation transaction acquires the project lock, activation must observe the archived state and abort. Any already-uploaded but unactivated R2 object is handled by the reconciliation/cleanup policy.
+7. If publication reserves its `PENDING` snapshot first, archiving may still commit while the R2 upload is in progress because the upload occurs outside the database transaction. The activation transaction must therefore recheck the project and environment archive state while holding the project lock before activating the snapshot.
+8. Physical deletion is not used for normal archival. Foreign-key restrictions protect retained snapshots and history.
 
 **Rows and constraints involved:** `Project.archivedAt`; `Environment.archivedAt`; `PublishedSnapshot`; foreign keys; transaction locks.
 
-**Expected result:** No publication can pass the archive check using stale state. The lock protocol—not merely checking `archivedAt` in application code—must prevent the race.
+**Expected result:** No publication can activate a snapshot after the project or environment has been archived. No publication can pass the archive check using stale state. The lock protocol—not merely checking `archivedAt` in application code—must prevent the race.
 
 ## E4. An SDK key is revoked while an evaluator has cached its hash
 
@@ -1201,6 +1195,7 @@ constraint with the exact same ordered column tuple.
 | `FlagRule`              | INDEX (`flagEnvironmentConfigId`, `priority`, `id`)          | #6, #18: retrieve rules for a configuration in deterministic `(priority, id)` order. Priority is not unique.                  |
 | `SdkKey`                | PRIMARY KEY (`id`)                                           | #19: direct SDK-key management and revocation.                                                                                |
 | `SdkKey`                | UNIQUE (`keyHash`)                                           | #10: lookup by hash; raw SDK keys are never stored.                                                                           |     |
+| `SdkKey`                | INDEX (`environmentId`, `createdAt DESC`, `id DESC`)         | #11: list keys for an environment in creation order; supports settings page.                                                  |
 | `SdkKey`                | PARTIAL INDEX (`id`) WHERE `revokedAt IS NULL`               | #20: scan non-revoked SDK keys when rebuilding the Redis key index; expiry is filtered by the query.                          |
 | `PublishedSnapshot`     | PRIMARY KEY (`id`)                                           | Direct snapshot lookup.                                                                                                       |
 | `PublishedSnapshot`     | UNIQUE (`environmentId`, `version`)                          | #9, #18: unique version per environment and version-history lookup.                                                           |
@@ -1280,45 +1275,6 @@ The runtime application role must not own these tables.
   exact referenced UNIQUE tuple and test the constraints using the restricted
   application role. Do not add extra indexes without a documented access
   pattern.
-
----
-
-# Decisions accepted for v2
-
-1. Flag configuration is per environment (`FlagEnvironmentConfig`); one logical flag may differ across development, staging, and production.
-2. Evaluator database dependency: **option (b)**. SDK key index is published to Redis by control plane; evaluator never queries PostgreSQL. A Redis-loss rebuild is owned by the control plane.
-3. R2 stores immutable published snapshot payloads. PostgreSQL stores metadata and the canonical active pointer; Redis is cache.
-4. Snapshot lifecycle is `PENDING → ACTIVE → SUPERSEDED`, with `FAILED` for unrecoverable attempts. A never-published environment has zero ACTIVE rows.
-5. `PublishedSnapshot` is the only source of truth for live publication; no `Environment.publishedVersion` column.
-6. Membership roles are `OWNER`, `ADMIN`, `EDITOR`, `VIEWER`. At least one OWNER per organization is enforced in application transactions locking the organization row, with a concurrency test.
-7. Archived flag keys remain reserved. Flag keys and slugs are lowercase ASCII kebab-case, rejected on invalid format, and protected by database CHECK constraints.
-8. MVP flag type is `BOOLEAN`. Rule priority is non-unique; evaluation order is `(priority, id)`.
-9. Draft writes are one transaction, compare-and-swap first; stale `expectedDraftRevision` returns HTTP 409.
-10. Cache and revocation: Redis entries do not expire through TTL and are repaired by reconciliation. The evaluator's in-memory cache has a 15-second TTL. The SDK-key revocation target is 20 seconds total: 15 seconds plus a 5-second operational margin. This target must be validated under the supported operating conditions.
-11. Audit rows retain `actorUserId` and a denormalized `actorLabel`, with no FK to User; ordinary account lifecycle disables users rather than physically deleting them.
-12. RLS is planned hardening, enabled after Phase 4. Tests must run as a restricted non-owner role to prove policy behavior.
-13. AuditLog partitioning is **not planned for MVP**. Revisit only if measured row volume/query latency or retention operations justify partitioning; partitioning would require a partition-compatible primary key.
-14. All version/revision counters use PostgreSQL `INTEGER` / Prisma `Int` for MVP; overflow is not a realistic product-scale concern.
-15. Project archive and publish use compatible row locks. Publish locks Project `FOR SHARE`, then Environment `FOR UPDATE`; archive locks Project `FOR UPDATE`. Both acquire locks in Project-before-Environment order.
-
----
-
-# Deferred decisions (owner and trigger)
-
-- **Prisma UUIDv7 default semantics** — Owner: project developer. Trigger: before writing schema/migration. Run a minimal Prisma 7.10 insert test and inspect generated SQL; do not assume PostgreSQL 17 has native `uuidv7()`.
-- **RLS policy SQL and second context setting `app.current_user_id`** — Owner: project developer. Trigger: Phase 4 hardening. Policies must avoid recursive Membership/Organization lookups by using a narrowly scoped security-definer helper with fixed `search_path`, or another tested non-recursive policy design; no broad BYPASSRLS runtime role.
-- **`db://` validation and evaluator config semantics** — Owner: project developer. Trigger: before Step 2. Inspect `env.schema`, `loadEnvironment`, and `AppModule.register`; explicitly test whether `db://` is rejected and whether evaluator omits Prisma even when `DATABASE_URL` is present.
-- **SDK key storage/cache transport implementation** — Owner: project developer. Trigger: before evaluator implementation. Keep key index in Redis and published payload in R2; document readiness semantics and reconciliation behavior.
-
----
-
-# Questions to explain before Step 2
-
-1. If both a pointer column and a status column say what is live, the two can disagree after a partial write or bug. V2 removes the pointer column and makes the ACTIVE snapshot row canonical; the partial unique index prevents two ACTIVE rows, while the transaction protocol ensures the old ACTIVE row is superseded before the new row becomes ACTIVE.
-2. `organizationId` match alone does not prove project match: a flag and environment can belong to different projects in the same organization. Composite FKs include project identity and tenant identity.
-3. `ON DELETE SET NULL` updates an audit row during actor deletion, conflicting with append-only enforcement. V2 stores the actor ID and label as historical values without an actor FK.
-4. Evaluator DB lookup contradicts the goal that evaluation survives PostgreSQL outage. V2 makes the control plane publish a Redis key index; evaluator reads Redis/R2 only and never has a database connection string.
-5. A table owner may bypass RLS by default, so a test as owner can read cross-tenant rows even when policies would block a normal app role. RLS tests must use the restricted non-owner runtime role.
 
 ---
 

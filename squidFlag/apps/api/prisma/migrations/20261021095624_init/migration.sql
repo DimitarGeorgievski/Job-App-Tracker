@@ -201,9 +201,6 @@ CREATE UNIQUE INDEX "Organization_slug_key" ON "Organization"("slug");
 CREATE INDEX "Membership_userId_organizationId_idx" ON "Membership"("userId", "organizationId");
 
 -- CreateIndex
-CREATE INDEX "Membership_organizationId_createdAt_id_idx" ON "Membership"("organizationId", "createdAt" DESC, "id" DESC);
-
--- CreateIndex
 CREATE UNIQUE INDEX "Membership_organizationId_userId_key" ON "Membership"("organizationId", "userId");
 
 -- CreateIndex
@@ -258,49 +255,49 @@ CREATE INDEX "RefreshToken_familyId_idx" ON "RefreshToken"("familyId");
 CREATE INDEX "RefreshToken_expiresAt_id_idx" ON "RefreshToken"("expiresAt", "id");
 
 -- AddForeignKey
-ALTER TABLE "Membership" ADD CONSTRAINT "Membership_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Membership" ADD CONSTRAINT "Membership_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- AddForeignKey
-ALTER TABLE "Membership" ADD CONSTRAINT "Membership_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Membership" ADD CONSTRAINT "Membership_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- AddForeignKey
-ALTER TABLE "Project" ADD CONSTRAINT "Project_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Project" ADD CONSTRAINT "Project_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- AddForeignKey
-ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- AddForeignKey
-ALTER TABLE "Environment" ADD CONSTRAINT "Environment_organizationId_projectId_fkey" FOREIGN KEY ("organizationId", "projectId") REFERENCES "Project"("organizationId", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Environment" ADD CONSTRAINT "Environment_organizationId_projectId_fkey" FOREIGN KEY ("organizationId", "projectId") REFERENCES "Project"("organizationId", "id") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- AddForeignKey
-ALTER TABLE "FeatureFlag" ADD CONSTRAINT "FeatureFlag_organizationId_projectId_fkey" FOREIGN KEY ("organizationId", "projectId") REFERENCES "Project"("organizationId", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "FeatureFlag" ADD CONSTRAINT "FeatureFlag_organizationId_projectId_fkey" FOREIGN KEY ("organizationId", "projectId") REFERENCES "Project"("organizationId", "id") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- AddForeignKey
-ALTER TABLE "FlagEnvironmentConfig" ADD CONSTRAINT "FlagEnvironmentConfig_organizationId_projectId_environment_fkey" FOREIGN KEY ("organizationId", "projectId", "environmentId") REFERENCES "Environment"("organizationId", "projectId", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "FlagEnvironmentConfig" ADD CONSTRAINT "FlagEnvironmentConfig_organizationId_projectId_environment_fkey" FOREIGN KEY ("organizationId", "projectId", "environmentId") REFERENCES "Environment"("organizationId", "projectId", "id") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- AddForeignKey
-ALTER TABLE "FlagEnvironmentConfig" ADD CONSTRAINT "FlagEnvironmentConfig_organizationId_projectId_flagId_fkey" FOREIGN KEY ("organizationId", "projectId", "flagId") REFERENCES "FeatureFlag"("organizationId", "projectId", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "FlagEnvironmentConfig" ADD CONSTRAINT "FlagEnvironmentConfig_organizationId_projectId_flagId_fkey" FOREIGN KEY ("organizationId", "projectId", "flagId") REFERENCES "FeatureFlag"("organizationId", "projectId", "id") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- AddForeignKey
-ALTER TABLE "FlagRule" ADD CONSTRAINT "FlagRule_organizationId_flagEnvironmentConfigId_fkey" FOREIGN KEY ("organizationId", "flagEnvironmentConfigId") REFERENCES "FlagEnvironmentConfig"("organizationId", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "FlagRule" ADD CONSTRAINT "FlagRule_organizationId_flagEnvironmentConfigId_fkey" FOREIGN KEY ("organizationId", "flagEnvironmentConfigId") REFERENCES "FlagEnvironmentConfig"("organizationId", "id") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- AddForeignKey
-ALTER TABLE "SdkKey" ADD CONSTRAINT "SdkKey_organizationId_environmentId_fkey" FOREIGN KEY ("organizationId", "environmentId") REFERENCES "Environment"("organizationId", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "SdkKey" ADD CONSTRAINT "SdkKey_organizationId_environmentId_fkey" FOREIGN KEY ("organizationId", "environmentId") REFERENCES "Environment"("organizationId", "id") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- AddForeignKey
-ALTER TABLE "SdkKey" ADD CONSTRAINT "SdkKey_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "SdkKey" ADD CONSTRAINT "SdkKey_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- AddForeignKey
-ALTER TABLE "PublishedSnapshot" ADD CONSTRAINT "PublishedSnapshot_organizationId_projectId_environmentId_fkey" FOREIGN KEY ("organizationId", "projectId", "environmentId") REFERENCES "Environment"("organizationId", "projectId", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "PublishedSnapshot" ADD CONSTRAINT "PublishedSnapshot_organizationId_projectId_environmentId_fkey" FOREIGN KEY ("organizationId", "projectId", "environmentId") REFERENCES "Environment"("organizationId", "projectId", "id") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- AddForeignKey
-ALTER TABLE "PublishedSnapshot" ADD CONSTRAINT "PublishedSnapshot_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "PublishedSnapshot" ADD CONSTRAINT "PublishedSnapshot_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- AddForeignKey
-ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- AddForeignKey
-ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_replacedByTokenId_fkey" FOREIGN KEY ("replacedByTokenId") REFERENCES "RefreshToken"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_replacedByTokenId_fkey" FOREIGN KEY ("replacedByTokenId") REFERENCES "RefreshToken"("id") ON DELETE SET NULL ON UPDATE RESTRICT;
 
 -- Check: canonical lowercase email
 ALTER TABLE "User"
@@ -339,10 +336,45 @@ CHECK (
   AND "key" ~ '^[a-z0-9]+(-[a-z0-9]+)*$'
 );
 
--- Active SDK keys lookup
-CREATE INDEX "SdkKey_active_id_idx"
-ON "SdkKey" ("id")
-WHERE "revokedAt" IS NULL;
+-- Check: PublishedSnapshot version > 0
+ALTER TABLE "PublishedSnapshot"
+ADD CONSTRAINT "PublishedSnapshot_version_positive_check"
+CHECK ("version" > 0);
+
+-- Check: PublishedSnapshot draftRevision >= 0
+ALTER TABLE "PublishedSnapshot"
+ADD CONSTRAINT "PublishedSnapshot_draftRevision_nonnegative_check"
+CHECK ("draftRevision" >= 0);
+
+-- Check: PublishedSnapshot sizeBytes > 0
+ALTER TABLE "PublishedSnapshot"
+ADD CONSTRAINT "PublishedSnapshot_sizeBytes_positive_check"
+CHECK ("sizeBytes" > 0);
+
+-- Check: PublishedSnapshot checksum is 64 hex characters
+ALTER TABLE "PublishedSnapshot"
+ADD CONSTRAINT "PublishedSnapshot_checksum_hex64_check"
+CHECK ("checksum" ~ '^[0-9a-f]{64}$');
+
+-- Check: PublishedSnapshot ACTIVE => activatedAt NOT NULL
+ALTER TABLE "PublishedSnapshot"
+ADD CONSTRAINT "PublishedSnapshot_active_implies_activatedAt_check"
+CHECK ("status" <> 'ACTIVE' OR "activatedAt" IS NOT NULL);
+
+-- Check: PublishedSnapshot FAILED => failureCode NOT NULL
+ALTER TABLE "PublishedSnapshot"
+ADD CONSTRAINT "PublishedSnapshot_failed_implies_failureCode_check"
+CHECK ("status" <> 'FAILED' OR "failureCode" IS NOT NULL);
+
+-- Check: PublishedSnapshot sourceVersion < version (when sourceVersion is set)
+ALTER TABLE "PublishedSnapshot"
+ADD CONSTRAINT "PublishedSnapshot_sourceVersion_lt_version_check"
+CHECK ("sourceVersion" IS NULL OR "sourceVersion" < "version");
+
+-- Check: SdkKey last4 has length 4
+ALTER TABLE "SdkKey"
+ADD CONSTRAINT "SdkKey_last4_length4_check"
+CHECK (char_length("last4") = 4);
 
 -- Only one ACTIVE snapshot per environment
 CREATE UNIQUE INDEX "PublishedSnapshot_one_active_per_environment"
@@ -352,9 +384,4 @@ WHERE "status" = 'ACTIVE';
 -- Only one PENDING snapshot per environment
 CREATE UNIQUE INDEX "PublishedSnapshot_one_pending_per_environment"
 ON "PublishedSnapshot" ("environmentId")
-WHERE "status" = 'PENDING';
-
--- Pending snapshots processing order
-CREATE INDEX "PublishedSnapshot_pending_createdAt_id_idx"
-ON "PublishedSnapshot" ("createdAt", "id")
 WHERE "status" = 'PENDING';

@@ -46,21 +46,13 @@ describe('PrismaModule', () => {
     expect(() => moduleRef.get(PrismaModule, { strict: false })).toThrow();
     await moduleRef.close();
   });
-  it('should not instantiate PrismaService when evaluator has DATABASE_URL', async () => {
-    jest.clearAllMocks();
-    const config = parseEnv({
-      APP_ROLE: 'evaluator',
-      REDIS_URL: 'redis://localhost:6379',
-      DATABASE_URL: 'postgresql://user:password@localhost:5432/squidflag',
-    });
-    expect(config.DATABASE_URL).toBe(
-      'postgresql://user:password@localhost:5432/squidflag',
-    );
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule.register(config)],
-    }).compile();
-    expect(PrismaService).not.toHaveBeenCalled();
-    expect(() => moduleRef.get(PrismaService, { strict: false })).toThrow();
-    await moduleRef.close();
+  it('rejects evaluator with DATABASE_URL at parse time', () => {
+    expect(() =>
+      parseEnv({
+        APP_ROLE: 'evaluator',
+        REDIS_URL: 'redis://localhost:6379',
+        DATABASE_URL: 'postgresql://user:password@localhost:5432/squidflag',
+      }),
+    ).toThrow('Evaluator must not have DATABASE_URL set');
   });
 });
