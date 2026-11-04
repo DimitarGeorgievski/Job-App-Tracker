@@ -8,6 +8,7 @@ import { Logger, PinoLogger } from 'nestjs-pino';
 import { randomUUID } from 'node:crypto';
 import { GlobalExceptionFilter } from './platform/logging/global-exception.filter';
 import { loadEnvironment } from './platform/config/env.loader';
+import fastifyCookie from '@fastify/cookie';
 
 async function bootstrap() {
   const config = loadEnvironment();
@@ -22,6 +23,7 @@ async function bootstrap() {
     }),
     { bufferLogs: true },
   );
+  await app.register(fastifyCookie);
   app.useLogger(app.get(Logger));
   app.enableShutdownHooks();
   app.useGlobalFilters(
@@ -31,6 +33,10 @@ async function bootstrap() {
   fastify.addHook('onRequest', (request, reply, done) => {
     reply.header('x-request-id', request.id);
     done();
+  });
+  app.enableCors({
+    origin: config.CORS_ORIGINS,
+    credentials: true,
   });
   await app.listen({
     host: config.HOST,

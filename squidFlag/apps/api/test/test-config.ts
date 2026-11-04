@@ -3,6 +3,7 @@ export const e2eConfig = {
   APP_ROLE: 'all',
   REDIS_URL: process.env.E2E_REDIS_URL,
   DATABASE_URL: process.env.E2E_DATABASE_URL,
+  JWT_SECRET: 'test-only-secret-that-is-at-least-32-characters-long',
   CORS_ORIGINS: 'http://localhost:4001',
   APP_DATABASE_URL: process.env.APP_DATABASE_URL,
   WORKER_DATABASE_URL: process.env.WORKER_DATABASE_URL,

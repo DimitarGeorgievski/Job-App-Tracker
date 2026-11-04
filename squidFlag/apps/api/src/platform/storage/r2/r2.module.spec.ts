@@ -16,6 +16,7 @@ describe('R2Module', () => {
       R2_BUCKET: 'squidflag',
       R2_ACCESS_KEY_ID: 'test-access-key',
       R2_SECRET_ACCESS_KEY: 'test-secret-key',
+      JWT_SECRET: 'test-secret-at-least-32-characters-long',
     });
     const moduleRef = await Test.createTestingModule({
       imports: [R2Module.register(env)],

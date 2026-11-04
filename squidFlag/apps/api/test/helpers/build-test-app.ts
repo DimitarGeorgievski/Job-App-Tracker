@@ -9,6 +9,7 @@ import { EvaluatorAppModule } from '../../src/evaluator-app.module';
 import { parseEnv, type AppRole } from '../../src/platform/config/env.schema';
 import { e2eConfig } from '../test-config';
 import { assertTestDatabase } from '../assert-test-database';
+import fastifyCookie from '@fastify/cookie';
 
 interface BuildTestAppOptions {
   role: AppRole;
@@ -36,8 +37,12 @@ export async function buildTestApp({
       forceCloseConnections: 'idle',
       genReqId: () => randomUUID(),
     }),
-    { logger: false },
+    {
+      logger: false,
+      abortOnError: false,
+    },
   );
+  await app.register(fastifyCookie);
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
   return app;

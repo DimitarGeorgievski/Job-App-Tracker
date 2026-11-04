@@ -13,6 +13,7 @@ const validEnv = () =>
     R2_BUCKET: 'squidflag',
     R2_ACCESS_KEY_ID: 'test-access-key',
     R2_SECRET_ACCESS_KEY: 'test-secret-key',
+    JWT_SECRET: 'test-secret-at-least-32-characters-long',
   });
 describe('R2Service', () => {
   afterEach(() => {
@@ -74,6 +75,7 @@ describe('R2Service', () => {
       DATABASE_URL: 'postgresql://user:password@localhost:5432/squidflag',
       CORS_ORIGINS: 'http://localhost:3000',
       REDIS_URL: 'redis://localhost:6379',
+      JWT_SECRET: 'test-secret-at-least-32-characters-long',
     });
     const service = new R2Service(env);
     await expect(service.getObject('snapshots/v1.json')).rejects.toThrow(
@@ -90,6 +92,7 @@ describe('R2Service', () => {
       R2_ENDPOINT: 'https://example.r2.cloudflarestorage.com',
       R2_ACCESS_KEY_ID: 'test-access-key',
       R2_SECRET_ACCESS_KEY: 'test-secret-key',
+      JWT_SECRET: 'test-secret-at-least-32-characters-long',
     });
     const service = new R2Service(env);
     await expect(service.getObject('snapshots/v1.json')).rejects.toThrow(

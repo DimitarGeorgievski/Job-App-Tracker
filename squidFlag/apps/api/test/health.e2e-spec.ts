@@ -1,8 +1,9 @@
 import { type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { afterAll, beforeAll, describe, expect, it, jest } from '@jest/globals';
 import { RedisService } from '../src/platform/redis/redis.service';
-import { PrismaService } from '../src/platform/database/prisma.service';
 import { buildTestApp } from './helpers/build-test-app';
+import type { PostgresHealthCheck } from '../src/platform/health/postgres-health.token';
+import { HealthService } from '../src/platform/health/health.service';
 
 describe('Health endpoint (e2e)', () => {
   let app: NestFastifyApplication;
@@ -66,23 +67,32 @@ describe('Health endpoint (e2e)', () => {
     healthSpy.mockRestore();
   });
   it('GET /health/ready returns 503 when PostgreSQL is unhealthy', async () => {
-    const prismaService = app.get(PrismaService);
+    const healthService = app.get(HealthService);
+    const postgresHealth = (
+      healthService as unknown as {
+        postgresHealth: PostgresHealthCheck;
+      }
+    ).postgresHealth;
     const healthSpy = jest
-      .spyOn(prismaService, 'isHealthy')
+      .spyOn(postgresHealth, 'isHealthy')
       .mockResolvedValue(false);
-    const response = await app.inject({
-      method: 'GET',
-      url: '/health/ready',
-    });
-    expect(response.statusCode).toBe(503);
-    expect(response.json()).toEqual({
-      status: 'error',
-      dependencies: {
-        redis: 'connected',
-        postgres: 'unavailable',
-      },
-    });
-    healthSpy.mockRestore();
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/health/ready',
+      });
+      expect(healthSpy).toHaveBeenCalled();
+      expect(response.statusCode).toBe(503);
+      expect(response.json()).toEqual({
+        status: 'error',
+        dependencies: {
+          redis: 'connected',
+          postgres: 'unavailable',
+        },
+      });
+    } finally {
+      healthSpy.mockRestore();
+    }
   });
   it('evaluator starts without PostgreSQL and checks only Redis', async () => {
     const evaluatorApp = await buildTestApp({

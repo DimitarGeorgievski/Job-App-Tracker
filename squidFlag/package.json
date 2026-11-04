@@ -10,7 +10,10 @@
     "node": ">=26 <27"
   },
   "overrides": {
-    "fastify": "5.12.7"
+    "@nestjs/platform-fastify": {
+      "fastify": "5.11.3"
+    },
+    "@squidflag/api": {}
   },
   "scripts": {
     "api": "npm run start:dev -w @squidflag/api",

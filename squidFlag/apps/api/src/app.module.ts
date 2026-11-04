@@ -10,10 +10,12 @@ import type { AppEnv } from './platform/config/env.schema';
 import { HealthService } from './platform/health/health.service';
 import { HealthController } from './platform/health/health.controller';
 import { R2Module } from './platform/storage/r2/r2.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({})
 export class AppModule {
   static register(config: AppEnv): DynamicModule {
+    const isEvaluator = config.APP_ROLE === 'evaluator';
     return {
       module: AppModule,
       imports: [
@@ -21,6 +23,7 @@ export class AppModule {
         RedisModule.register(config),
         PrismaModule.register(config),
         R2Module.register(config),
+        ...(isEvaluator ? [] : [AuthModule.register(config)]),
       ],
       controllers: [AppController, HealthController],
       providers: [

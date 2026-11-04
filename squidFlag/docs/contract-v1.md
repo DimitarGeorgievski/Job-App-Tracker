@@ -44,10 +44,10 @@ const schemaVersionSchema = z.literal(1);
 ```ts
 const snapshotEnvironmentSchema = z
   .object({
-    id: uuidSchema, // UUIDv7 string
-    key: environmentKeySchema, // lowercase kebab-case, 1-63 chars
-    version: z.number().int().positive(), // publication version (1, 2, 3...)
-    draftRevision: z.number().int().nonnegative(), // captured draft revision
+    id: uuidSchema,
+    key: environmentKeySchema,
+    version: z.number().int().positive(),
+    draftRevision: z.number().int().nonnegative(),
   })
   .strict();
 ```
@@ -82,9 +82,9 @@ const flagSnapshotSchema = z
 const flagRuleSchema = z
   .object({
     id: uuidSchema,
-    priority: z.number().int(), // non-unique; tie-break by id (ascending)
-    conditions: z.array(conditionSchema), // array of condition tuples; ALL must match (AND)
-    value: z.boolean(), // result when this rule matches
+    priority: z.number().int(),
+    conditions: z.array(conditionSchema),
+    value: z.boolean(),
   })
   .strict();
 ```
@@ -102,12 +102,9 @@ const flagRuleSchema = z
 Each condition is a discriminated union on `operator`. The `attribute` is the context key (e.g., `"country"`, `"userId"`, `"plan"`).
 
 ```ts
-// Base interface for all conditions
 interface BaseCondition {
-  attribute: string; // e.g., "country", "userId", "plan"
+  attribute: string;
 }
-
-// Discriminated union variants
 type Condition =
   | { operator: 'equals'; value: string }
   | { operator: 'notEquals'; value: string }
@@ -121,7 +118,7 @@ type Condition =
   | { operator: 'lt'; value: number }
   | { operator: 'lte'; value: number }
   | { operator: 'exists'; value: boolean }
-  | { operator: 'versionEquals'; value: string } // semver comparison
+  | { operator: 'versionEquals'; value: string }
   | { operator: 'versionGt'; value: string }
   | { operator: 'versionGte'; value: string }
   | { operator: 'versionLt'; value: string }
@@ -135,7 +132,7 @@ const stringValue = z.string().min(1);
 const stringArrayValue = z.array(z.string().min(1)).min(1);
 const numberValue = z.number();
 const booleanValue = z.boolean();
-const versionValue = z.string().regex(/^\d+\.\d+\.\d+$/); // simple semver
+const versionValue = z.string().regex(/^\d+\.\d+\.\d+$/);
 
 const conditionSchema = z.discriminatedUnion('operator', [
   z.object({ operator: z.literal('equals'), attribute: stringValue, value: stringValue }),
@@ -190,7 +187,7 @@ Typical keys: `userId`, `country`, `plan`, `appVersion`, `customAttribute`.
 const evaluationResultSchema = z.object({
   value: z.boolean(),
   reason: z.enum(['rule-match', 'default-value', 'disabled']),
-  ruleId: z.string().optional(), // present only when reason === 'rule-match'
+  ruleId: z.string().optional(),
 });
 ```
 
@@ -351,7 +348,7 @@ function matchSingleCondition(cond, context) {
     case 'versionLte':
       return exists && compareSemver(String(ctxValue), cond.value) <= 0;
     default:
-      return false; // unreachable due to discriminated union
+      return false;
   }
 }
 ```

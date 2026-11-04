@@ -27,6 +27,7 @@ const baseEnvSchema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   DATABASE_URL: z.string().trim().min(1).optional(),
   CORS_ORIGINS: z.string().optional(),
+  JWT_SECRET: z.string().min(32).optional(),
 });
 const databaseUrlSchema = z
   .url('DATABASE_URL must be a valid URL')
@@ -40,11 +41,13 @@ const roleEnvSchema = z.discriminatedUnion('APP_ROLE', [
     APP_ROLE: z.literal('all'),
     DATABASE_URL: databaseUrlSchema,
     CORS_ORIGINS: z.string().trim().min(1),
+    JWT_SECRET: z.string().min(32),
   }),
   baseEnvSchema.extend({
     APP_ROLE: z.literal('control'),
     DATABASE_URL: databaseUrlSchema,
     CORS_ORIGINS: z.string().trim().min(1),
+    JWT_SECRET: z.string().min(32),
   }),
   baseEnvSchema
     .extend({

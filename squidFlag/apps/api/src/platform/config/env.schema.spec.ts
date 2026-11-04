@@ -5,6 +5,7 @@ const testEnv = {
   REDIS_URL: 'redis://localhost:6379',
   DATABASE_URL: 'postgresql://user:password@localhost:5432/squidflag',
   CORS_ORIGINS: 'http://localhost:3000',
+  JWT_SECRET: 'test-secret-at-least-32-characters-long',
 };
 describe('parseEnv', () => {
   it('defaults APP_ROLE to all', () => {
