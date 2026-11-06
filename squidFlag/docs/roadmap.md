@@ -31,7 +31,6 @@ flags in memory. No WebSockets.
 
 ## Next up
 
-1. **Collect missing evidence** (Phase 0 drills, UUIDv7 verification, migrate drift experiment, app-role constraint tests, green CI)
 2. **Phase 3**: Dashboard frontend (login page, protected routes, auth context, api-client)
 3. **Phase 4**: Orgs, projects, environments, RBAC, audit log
 
