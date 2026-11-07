@@ -11,5 +11,9 @@
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
-  "transformIgnorePatterns": ["node_modules/(?!(.pnpm/)?@nestjs)"]
+  "transformIgnorePatterns": ["node_modules/(?!(.pnpm/)?@nestjs)"],
+  "moduleNameMapper": {
+    "^generated/(.*)$": "<rootDir>/../generated/$1",
+    "^src/(.*)$": "<rootDir>/../src/$1"
+  }
 }

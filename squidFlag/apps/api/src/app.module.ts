@@ -11,6 +11,7 @@ import { HealthService } from './platform/health/health.service';
 import { HealthController } from './platform/health/health.controller';
 import { R2Module } from './platform/storage/r2/r2.module';
 import { AuthModule } from './auth/auth.module';
+import { OrgModule } from './org/org.module';
 
 @Module({})
 export class AppModule {
@@ -24,6 +25,7 @@ export class AppModule {
         PrismaModule.register(config),
         R2Module.register(config),
         ...(isEvaluator ? [] : [AuthModule.register(config)]),
+        ...(isEvaluator ? [] : [OrgModule]),
       ],
       controllers: [AppController, HealthController],
       providers: [

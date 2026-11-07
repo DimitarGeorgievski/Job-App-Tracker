@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { apiMe, type AuthResult } from '../lib/api';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { apiMe, login, register, type AuthResult } from '../lib/api';
 
 type AuthState =
   | { kind: 'loading' }
@@ -9,6 +9,8 @@ type AuthState =
 
 type AuthContextValue = {
   state: AuthState;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -26,14 +28,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     let cancelled = false;
-
     const initializeSession = async () => {
       try {
         const result: AuthResult = await apiMe();
+
         if (cancelled) return;
 
         switch (result.kind) {
-          case 'authenticated': {
+          case 'success': {
             setState({ kind: 'authenticated', user: result.user });
             break;
           }
@@ -41,8 +43,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setState({ kind: 'unauthenticated', reason: result.reason });
             break;
           }
-          case 'api-unavailable': {
-            setState({ kind: 'error', reason: `api-unavailable: ${result.reason}` });
+          case 'error': {
+            setState({ kind: 'error', reason: result.reason });
             break;
           }
           case 'coordination-error': {
@@ -55,14 +57,69 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setState({ kind: 'error', reason: `unexpected-error: ${String(e)}` });
       }
     };
+
     void initializeSession();
+
     return () => {
       cancelled = true;
     };
   }, []);
 
+  const handleLogin = useCallback(async (email: string, password: string) => {
+    try {
+      const result: AuthResult = await login(email, password);
+      switch (result.kind) {
+        case 'success': {
+          setState({ kind: 'authenticated', user: result.user });
+          break;
+        }
+        case 'unauthenticated': {
+          setState({ kind: 'unauthenticated', reason: result.reason });
+          break;
+        }
+        case 'error': {
+          setState({ kind: 'error', reason: result.reason });
+          break;
+        }
+        case 'coordination-error': {
+          setState({ kind: 'error', reason: `coordination-error: ${result.reason}` });
+          break;
+        }
+      }
+    } catch (e) {
+      setState({ kind: 'error', reason: `unexpected-error: ${String(e)}` });
+    }
+  }, []);
+
+  const handleRegister = useCallback(async (email: string, password: string) => {
+    try {
+      const result: AuthResult = await register(email, password);
+
+      switch (result.kind) {
+        case 'success': {
+          setState({ kind: 'authenticated', user: result.user });
+          break;
+        }
+        case 'unauthenticated': {
+          setState({ kind: 'unauthenticated', reason: result.reason });
+          break;
+        }
+        case 'error': {
+          setState({ kind: 'error', reason: result.reason });
+          break;
+        }
+        case 'coordination-error': {
+          setState({ kind: 'error', reason: `coordination-error: ${result.reason}` });
+          break;
+        }
+      }
+    } catch (e) {
+      setState({ kind: 'error', reason: `unexpected-error: ${String(e)}` });
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ state }}>
+    <AuthContext.Provider value={{ state, login: handleLogin, register: handleRegister }}>
       {children}
     </AuthContext.Provider>
   );

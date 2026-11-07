@@ -9,11 +9,10 @@ type RefreshOutcome =
   | { kind: '5xx'; statusCode: number };
 
 export type AuthResult =
-  | { kind: 'authenticated'; user: { id: string; email: string } }
+  | { kind: 'success'; user: { id: string; email: string } }
   | { kind: 'unauthenticated'; reason: string }
-  | { kind: 'api-unavailable'; reason: 'network' | '5xx' }
-  | { kind: 'coordination-error'; reason: string }
-  | { kind: 'api-unavailable'; reason: 'network' | '5xx' | 'unexpected' };
+  | { kind: 'error'; reason: string }
+  | { kind: 'coordination-error'; reason: string };
 
 async function refreshRotation(): Promise<RefreshOutcome> {
   try {
@@ -26,7 +25,8 @@ async function refreshRotation(): Promise<RefreshOutcome> {
     if (res.status === 401 || res.status === 403)
       return { kind: 'unauthenticated', reason: 'refresh-token-invalid' };
     return { kind: 'network-error' };
-  } catch (e) {
+  } catch (error) {
+    console.log(error);
     return { kind: 'network-error' };
   }
 }
@@ -37,7 +37,7 @@ async function apiMe(): Promise<AuthResult> {
     if (response.ok) {
       const user = await response.json();
       if (user) {
-        return { kind: 'authenticated', user };
+        return { kind: 'success', user };
       }
       return { kind: 'unauthenticated', reason: 'invalid-user' };
     }
@@ -52,7 +52,7 @@ async function apiMe(): Promise<AuthResult> {
               if (recheck.ok) {
                 const user = await recheck.json();
                 if (user) {
-                  return { kind: 'authenticated', user };
+                  return { kind: 'success', user };
                 }
                 return { kind: 'unauthenticated', reason: 'invalid-user' };
               }
@@ -63,15 +63,15 @@ async function apiMe(): Promise<AuthResult> {
                   if (retry.ok) {
                     const user = await retry.json();
                     if (user) {
-                      return { kind: 'authenticated', user };
+                      return { kind: 'success', user };
                     }
                     return { kind: 'unauthenticated', reason: 'invalid-user' };
                   }
                   if (retry.status >= 500) {
-                    return { kind: 'api-unavailable', reason: '5xx' };
+                    return { kind: 'error', reason: 'api-unavailable: 5xx' };
                   }
                   if (!retry.ok) {
-                    return { kind: 'api-unavailable', reason: 'network' };
+                    return { kind: 'error', reason: 'network-error' };
                   }
                   return { kind: 'unauthenticated', reason: 'invalid-user' };
                 }
@@ -79,15 +79,15 @@ async function apiMe(): Promise<AuthResult> {
                   return { kind: 'unauthenticated', reason: refresh.reason };
                 }
                 return {
-                  kind: 'api-unavailable',
-                  reason: refresh.kind === '5xx' ? '5xx' : 'network',
+                  kind: 'error',
+                  reason: refresh.kind === '5xx' ? 'api-unavailable: 5xx' : 'network-error',
                 };
               }
               if (recheck.status >= 500) {
-                return { kind: 'api-unavailable', reason: '5xx' };
+                return { kind: 'error', reason: 'api-unavailable: 5xx' };
               }
               if (!recheck.ok) {
-                return { kind: 'api-unavailable', reason: 'network' };
+                return { kind: 'error', reason: 'network-error' };
               }
               return { kind: 'unauthenticated', reason: 'unexpected' };
             },
@@ -102,15 +102,72 @@ async function apiMe(): Promise<AuthResult> {
     }
 
     if (response.status >= 500) {
-      return { kind: 'api-unavailable', reason: '5xx' };
+      return { kind: 'error', reason: 'api-unavailable: 5xx' };
     }
     if (response.status === 0) {
-      return { kind: 'api-unavailable', reason: 'network' };
+      return { kind: 'error', reason: 'network-error' };
     }
     return { kind: 'unauthenticated', reason: 'non-401-4xx' };
-  } catch (e) {
-    return { kind: 'api-unavailable', reason: 'network' };
+  } catch (error) {
+    console.log(error);
+    return { kind: 'error', reason: 'network-error' };
   }
 }
 
-export { refreshRotation, apiMe };
+async function login(email: string, password: string): Promise<AuthResult> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { kind: 'success', user: data.user };
+    }
+    if (res.status === 401) {
+      return { kind: 'unauthenticated', reason: 'not-authenticated' };
+    }
+    if (res.status >= 400 && res.status < 500) {
+      return { kind: 'error', reason: 'unexpected-response' };
+    }
+    if (res.status >= 500) {
+      return { kind: 'error', reason: 'api-unavailable: 5xx' };
+    }
+    return { kind: 'error', reason: 'network-error' };
+  } catch (error) {
+    console.log(error);
+    return { kind: 'error', reason: 'network-error' };
+  }
+}
+
+async function register(email: string, password: string): Promise<AuthResult> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { kind: 'success', user: data.user };
+    }
+    if (res.status === 409) {
+      return { kind: 'unauthenticated', reason: 'not authenticated' };
+    }
+    if (res.status >= 400 && res.status < 500) {
+      return { kind: 'error', reason: 'unexpected-response' };
+    }
+    if (res.status >= 500) {
+      return { kind: 'error', reason: 'api-unavailable: 5xx' };
+    }
+    return { kind: 'error', reason: 'network-error' };
+  } catch (error) {
+    console.log(error);
+    return { kind: 'error', reason: 'network-error' };
+  }
+}
+
+export { refreshRotation, apiMe, login, register };

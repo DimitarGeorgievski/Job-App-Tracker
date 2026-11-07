@@ -1,9 +1,10 @@
-import { DynamicModule, Module } from '@nestjs/common';
+import { DynamicModule, Global, Module } from '@nestjs/common';
 import { APP_ENV } from '../config/app-env.token';
 import type { AppEnv } from '../config/env.schema';
 import { PrismaService } from './prisma.service';
 import { POSTGRES_HEALTH_CHECK } from '../health/postgres-health.token';
 
+@Global()
 @Module({})
 export class PrismaModule {
   static register(config: AppEnv): DynamicModule {

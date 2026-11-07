@@ -42,7 +42,7 @@ export class AuthModule {
         { provide: APP_ENV, useValue: config },
         { provide: APP_GUARD, useClass: ThrottlerGuard },
       ],
-      exports: [AuthService],
+      exports: [AuthService, JwtModule],
     };
   }
 }
