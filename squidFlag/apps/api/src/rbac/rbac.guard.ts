@@ -4,6 +4,7 @@ import { hasPermission, PermissionKey } from '../rbac/permissions';
 import { uuidRegex } from './uuid-regex';
 import { Reflector } from '@nestjs/core';
 import type { FastifyRequest } from 'fastify';
+import { ORG_PERMISSION_KEY } from './org-permission.decorator';
 
 interface OrgPermissionRequest extends FastifyRequest {
   params: {
@@ -22,7 +23,7 @@ export class OrgPermissionGuard {
   ) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const permission = this.reflector.getAllAndOverride<PermissionKey>(
-      'orgPermission',
+      ORG_PERMISSION_KEY,
       [context.getHandler(), context.getClass()],
     );
     if (!permission) return true;

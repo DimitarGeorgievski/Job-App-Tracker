@@ -38,7 +38,7 @@ export async function buildTestApp({
       genReqId: () => randomUUID(),
     }),
     {
-      logger: false,
+      logger: ['error', 'warn'],
       abortOnError: false,
     },
   );
