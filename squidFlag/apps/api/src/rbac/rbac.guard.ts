@@ -5,6 +5,7 @@ import { uuidRegex } from './uuid-regex';
 import { Reflector } from '@nestjs/core';
 import type { FastifyRequest } from 'fastify';
 import { ORG_PERMISSION_KEY } from './org-permission.decorator';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 
 interface OrgPermissionRequest extends FastifyRequest {
   params: {
@@ -41,7 +42,12 @@ export class OrgPermissionGuard {
       },
     });
 
-    if (!membership) return false;
-    return hasPermission(membership.role, permission);
+    if (!membership) {
+      throw new NotFoundException('Organization not found');
+    }
+    if (!hasPermission(membership.role, permission)) {
+      throw new ForbiddenException('Insufficient permission');
+    }
+    return true;
   }
 }

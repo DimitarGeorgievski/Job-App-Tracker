@@ -138,7 +138,7 @@ describe('ProjectController (e2e)', () => {
         headers: authHeaders(),
       });
 
-      expect(result.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(result.statusCode).toBe(HttpStatus.NOT_FOUND);
     });
 
     it('should return 400 when organization is archived', async () => {
@@ -255,7 +255,7 @@ describe('ProjectController (e2e)', () => {
         headers: authHeaders(),
       });
 
-      expect(result.statusCode).toBe(HttpStatus.FORBIDDEN);
+      expect(result.statusCode).toBe(HttpStatus.NOT_FOUND);
     });
 
     it('should return 400 when organization is already archived', async () => {

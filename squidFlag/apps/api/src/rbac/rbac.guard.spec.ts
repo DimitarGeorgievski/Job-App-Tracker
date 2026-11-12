@@ -2,11 +2,12 @@ import { describe, expect, it, beforeEach } from '@jest/globals';
 import { type ExecutionContext } from '@nestjs/common';
 import { mockDeep, type DeepMockProxy } from 'jest-mock-extended';
 import { type PermissionKey } from '../rbac/permissions';
-import { type MembershipRole } from 'generated/prisma/client';
+import { MembershipRole } from 'generated/prisma/client';
 import { createOrgPermissionContext } from './rbac.guard.test-utils';
 import { OrgPermissionGuard } from './rbac.guard';
 import { type Reflector } from '@nestjs/core';
 import { type PrismaService } from 'src/platform/database/prisma.service';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 
 const createMockExecutionContext = (
   orgId: string = '0197f8c0-1234-7abc-8def-0123456789ab',
@@ -57,16 +58,51 @@ describe('OrgPermissionGuard — invalid userId UUID format', () => {
   });
 });
 
-describe('OrgPermissionGuard — user not a member of the organization', () => {
-  it('should deny access when no Membership record exists for (orgId, userId)', async () => {
+describe('OrgPermissionGuard — membership not found (404)', () => {
+  it('should throw NotFoundException when no Membership record exists', async () => {
     mockPrismaService.membership.findUnique.mockResolvedValue(null);
-    const result = await guard.canActivate(
-      createMockExecutionContext(
-        '0197f8c0-1234-7abc-8def-0123456789ab',
-        '0197f8c0-1234-7abc-8def-012345678900',
+    await expect(
+      guard.canActivate(
+        createMockExecutionContext(
+          '0197f8c0-1234-7abc-8def-0123456789ab',
+          '0197f8c0-1234-7abc-8def-012345678900',
+        ),
       ),
-    );
-    expect(result).toBe(false);
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('should throw NotFoundException for nonexistent organization (anti-enumeration)', async () => {
+    mockPrismaService.membership.findUnique.mockResolvedValue(null);
+    await expect(
+      guard.canActivate(
+        createMockExecutionContext(
+          '00000000-0000-0000-0000-000000000000',
+          '0197f8c0-1234-7abc-8def-012345678900',
+        ),
+      ),
+    ).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('OrgPermissionGuard — insufficient permission (403)', () => {
+  it('should throw ForbiddenException when membership exists but has insufficient role', async () => {
+    mockPrismaService.membership.findUnique.mockResolvedValue({
+      id: '1',
+      organizationId: '0197f8c0-1234-7abc-8def-0123456789ab',
+      userId: '0197f8c0-1234-7abc-8def-012345678900',
+      role: MembershipRole.VIEWER,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    mockReflector.getAllAndOverride.mockReturnValue('environment:create');
+    await expect(
+      guard.canActivate(
+        createMockExecutionContext(
+          '0197f8c0-1234-7abc-8def-0123456789ab',
+          '0197f8c0-1234-7abc-8def-012345678900',
+        ),
+      ),
+    ).rejects.toThrow(ForbiddenException);
   });
 });
 
@@ -175,7 +211,7 @@ describe('OrgPermissionGuard — ADMIN role', () => {
 });
 
 describe('OrgPermissionGuard — EDITOR role', () => {
-  it('should deny restricted permissions for EDITOR role', async () => {
+  it('should throw ForbiddenException for restricted permissions', async () => {
     const editorDeniedPermissions: PermissionKey[] = [
       'organization:rename',
       'organization:archive',
@@ -193,15 +229,23 @@ describe('OrgPermissionGuard — EDITOR role', () => {
     ];
     for (const permission of editorDeniedPermissions) {
       mockReflector.getAllAndOverride.mockReturnValue(permission);
+      mockPrismaService.membership.findUnique.mockResolvedValue({
+        id: '1',
+        organizationId: '0197f8c0-1234-7abc-8def-0123456789ab',
+        userId: '0197f8c0-1234-7abc-8def-012345678900',
+        role: MembershipRole.EDITOR,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
 
-      const result = await guard.canActivate(
-        createMockExecutionContext(
-          '0197f8c0-1234-7abc-8def-0123456789ab',
-          '0197f8c0-1234-7abc-8def-012345678900',
+      await expect(
+        guard.canActivate(
+          createMockExecutionContext(
+            '0197f8c0-1234-7abc-8def-0123456789ab',
+            '0197f8c0-1234-7abc-8def-012345678900',
+          ),
         ),
-      );
-
-      expect(result).toBe(false);
+      ).rejects.toThrow(ForbiddenException);
     }
   });
   it('should allow view and permitted edit permissions for EDITOR role', async () => {
@@ -218,18 +262,16 @@ describe('OrgPermissionGuard — EDITOR role', () => {
       'flag:edit',
       'rule:edit',
     ];
-
     for (const permission of editorAllowedPermissions) {
+      mockReflector.getAllAndOverride.mockReturnValue(permission);
       mockPrismaService.membership.findUnique.mockResolvedValue({
         id: '1',
         organizationId: '0197f8c0-1234-7abc-8def-0123456789ab',
         userId: '0197f8c0-1234-7abc-8def-012345678900',
-        role: 'EDITOR' as MembershipRole,
+        role: MembershipRole.EDITOR,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-
-      mockReflector.getAllAndOverride.mockReturnValue(permission);
 
       const result = await guard.canActivate(
         createMockExecutionContext(
@@ -244,37 +286,8 @@ describe('OrgPermissionGuard — EDITOR role', () => {
 });
 
 describe('OrgPermissionGuard — VIEWER role', () => {
-  it('should allow only view permissions for VIEWER role; all others return false', async () => {
-    const viewerViewPermissions: PermissionKey[] = [
-      'organization:view',
-      'project:view',
-      'environment:view',
-      'flag:view',
-      'rule:view',
-      'sdk:view',
-    ];
-
-    for (const permission of viewerViewPermissions) {
-      mockPrismaService.membership.findUnique.mockResolvedValue({
-        id: '1',
-        organizationId: '0197f8c0-1234-7abc-8def-0123456789ab',
-        userId: '0197f8c0-1234-7abc-8def-012345678900',
-        role: 'VIEWER' as MembershipRole,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      mockReflector.getAllAndOverride.mockReturnValue(permission);
-
-      const result = await guard.canActivate(
-        createMockExecutionContext(
-          '0197f8c0-1234-7abc-8def-0123456789ab',
-          '0197f8c0-1234-7abc-8def-012345678900',
-        ),
-      );
-      expect(result).toBe(true);
-    }
-
-    const viewerOtherPermissions: PermissionKey[] = [
+  it('should throw ForbiddenException for non-view permissions', async () => {
+    const viewerNonViewPermissions: PermissionKey[] = [
       'organization:rename',
       'organization:archive',
       'project:create',
@@ -295,7 +308,8 @@ describe('OrgPermissionGuard — VIEWER role', () => {
       'publish',
     ];
 
-    for (const permission of viewerOtherPermissions) {
+    for (const permission of viewerNonViewPermissions) {
+      mockReflector.getAllAndOverride.mockReturnValue(permission);
       mockPrismaService.membership.findUnique.mockResolvedValue({
         id: '1',
         organizationId: '0197f8c0-1234-7abc-8def-0123456789ab',
@@ -304,7 +318,37 @@ describe('OrgPermissionGuard — VIEWER role', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+
+      await expect(
+        guard.canActivate(
+          createMockExecutionContext(
+            '0197f8c0-1234-7abc-8def-0123456789ab',
+            '0197f8c0-1234-7abc-8def-012345678900',
+          ),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    }
+  });
+  it('should allow view permissions for VIEWER role', async () => {
+    const viewerViewPermissions: PermissionKey[] = [
+      'organization:view',
+      'project:view',
+      'environment:view',
+      'flag:view',
+      'rule:view',
+      'sdk:view',
+    ];
+
+    for (const permission of viewerViewPermissions) {
       mockReflector.getAllAndOverride.mockReturnValue(permission);
+      mockPrismaService.membership.findUnique.mockResolvedValue({
+        id: '1',
+        organizationId: '0197f8c0-1234-7abc-8def-0123456789ab',
+        userId: '0197f8c0-1234-7abc-8def-012345678900',
+        role: 'VIEWER' as MembershipRole,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
 
       const result = await guard.canActivate(
         createMockExecutionContext(
@@ -312,13 +356,22 @@ describe('OrgPermissionGuard — VIEWER role', () => {
           '0197f8c0-1234-7abc-8def-012345678900',
         ),
       );
-      expect(result).toBe(false);
+
+      expect(result).toBe(true);
     }
   });
 });
 
 describe('OrgPermissionGuard — handler-level metadata override', () => {
   it('should use handler-level @SetMetadata override over class-level', async () => {
+    mockPrismaService.membership.findUnique.mockResolvedValue({
+      id: '1',
+      organizationId: '0197f8c0-1234-7abc-8def-0123456789ab',
+      userId: '0197f8c0-1234-7abc-8def-012345678900',
+      role: 'OWNER' as MembershipRole,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
     mockReflector.getAllAndOverride.mockReturnValue('organization:view');
     const context = createMockExecutionContext(
       '0197f8c0-1234-7abc-8def-0123456789ab',
