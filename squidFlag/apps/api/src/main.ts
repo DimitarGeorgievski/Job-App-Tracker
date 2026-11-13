@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { GlobalExceptionFilter } from './platform/logging/global-exception.filter';
 import { loadEnvironment } from './platform/config/env.loader';
 import fastifyCookie from '@fastify/cookie';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const config = loadEnvironment();
@@ -26,6 +27,13 @@ async function bootstrap() {
   await app.register(fastifyCookie);
   app.useLogger(app.get(Logger));
   app.enableShutdownHooks();
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
   app.useGlobalFilters(
     new GlobalExceptionFilter(await app.resolve(PinoLogger)),
   );

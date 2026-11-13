@@ -7,10 +7,10 @@ import type { FastifyRequest } from 'fastify';
 import { ORG_PERMISSION_KEY } from './org-permission.decorator';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 
-interface OrgPermissionRequest extends FastifyRequest {
-  params: {
-    orgId: string;
-  };
+interface OrgPermissionRequest extends FastifyRequest<{
+  Params: { orgId?: string };
+  Querystring: { orgId?: string };
+}> {
   user: {
     sub: string;
   };
@@ -29,7 +29,7 @@ export class OrgPermissionGuard {
     );
     if (!permission) return true;
     const request = context.switchToHttp().getRequest<OrgPermissionRequest>();
-    const orgId = request.params.orgId;
+    const orgId = request.query?.orgId ?? request.params?.orgId;
     if (!orgId || !uuidRegex.test(orgId)) return false;
     const userId = request.user.sub;
     if (!userId || !uuidRegex.test(userId)) return false;

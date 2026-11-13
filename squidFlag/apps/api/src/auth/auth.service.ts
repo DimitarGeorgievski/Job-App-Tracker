@@ -177,25 +177,32 @@ export class AuthService {
     parsed: LoginDto,
     res: FastifyReply,
   ): Promise<{ user: { id: string; email: string } }> {
-    const user = await this.validateUser(parsed.email, parsed.password);
-    if (!user) throw new UnauthorizedException('Invalid credentials');
-    const familyId = randomUUID();
-    const { token: refreshToken, tokenHash } = this.generateRefreshToken(
-      user,
-      familyId,
-    );
-    await this.prisma.refreshToken.create({
-      data: {
-        userId: user.id,
-        tokenHash,
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { email: parsed.email } });
+      if (!user) throw new UnauthorizedException('Invalid credentials');
+      if (user.disabledAt)
+        throw new UnauthorizedException('Invalid credentials');
+      const passwordValid = await compare(parsed.password, user.passwordHash);
+      if (!passwordValid)
+        throw new UnauthorizedException('Invalid credentials');
+      const familyId = randomUUID();
+      const { token: refreshToken, tokenHash } = this.generateRefreshToken(
+        user,
         familyId,
-        expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
-        replacedByTokenId: null,
-      },
+      );
+      await tx.refreshToken.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          familyId,
+          expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+          replacedByTokenId: null,
+        },
+      });
+      const accessToken = this.generateAccessToken(user);
+      this.setAuthCookies(res, { accessToken, refreshToken });
+      return { user: { id: user.id, email: user.email } };
     });
-    const accessToken = this.generateAccessToken(user);
-    this.setAuthCookies(res, { accessToken, refreshToken });
-    return { user: { id: user.id, email: user.email } };
   }
 
   async refresh(

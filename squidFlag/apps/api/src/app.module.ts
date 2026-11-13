@@ -13,6 +13,7 @@ import { R2Module } from './platform/storage/r2/r2.module';
 import { AuthModule } from './auth/auth.module';
 import { OrgModule } from './org/org.module';
 import { EnvModule } from './environment/env.module';
+import { FlagModule } from './flag/flag.module';
 
 @Module({})
 export class AppModule {
@@ -27,7 +28,7 @@ export class AppModule {
         R2Module.register(config),
         ...(isEvaluator
           ? []
-          : [OrgModule, EnvModule, AuthModule.register(config)]),
+          : [OrgModule, EnvModule, AuthModule.register(config), FlagModule]),
       ],
       controllers: [AppController, HealthController],
       providers: [

@@ -1,11 +1,18 @@
-import { ExecutionContext, Inject, Injectable } from '@nestjs/common';
+import {
+  ExecutionContext,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../platform/database/prisma.service';
 import { FastifyRequest } from 'fastify';
 import { uuidRegex } from './uuid-regex';
 
-interface RequestWithUser extends FastifyRequest {
+interface RequestWithUser extends FastifyRequest<{
+  Params: { orgId?: string };
+  Querystring: { orgId?: string };
+}> {
   user: { sub: string };
-  params: { orgId: string };
 }
 
 @Injectable()
@@ -14,7 +21,7 @@ export class OrganizationGuard {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestWithUser>();
-    const orgId = request.params?.orgId;
+    const orgId = request.query.orgId ?? request.params.orgId;
     if (!orgId || !uuidRegex.test(orgId)) return false;
     const userId = request.user?.sub;
     if (!userId || !uuidRegex.test(userId)) return false;
@@ -26,7 +33,9 @@ export class OrganizationGuard {
         },
       },
     });
-
-    return !!membership;
+    if (!membership) {
+      throw new NotFoundException('Organization not found');
+    }
+    return true;
   }
 }

@@ -29,6 +29,18 @@ export async function seedE2eDatabase(config: AppEnv): Promise<void> {
     const prisma = app.get(PrismaService);
 
     const passwordHash = await hash(E2E_FIXTURES.user.password, BCRYPT_COST);
+    const editorPasswordHash = await hash(
+      E2E_FIXTURES.editorUser.password,
+      BCRYPT_COST,
+    );
+    const viewerPasswordHash = await hash(
+      E2E_FIXTURES.viewerUser.password,
+      BCRYPT_COST,
+    );
+
+    await prisma.flagRule.deleteMany({});
+    await prisma.flagEnvironmentConfig.deleteMany({});
+    await prisma.featureFlag.deleteMany({});
 
     await prisma.user.upsert({
       where: {
@@ -45,7 +57,37 @@ export async function seedE2eDatabase(config: AppEnv): Promise<void> {
         disabledAt: null,
       },
     });
+    await prisma.user.upsert({
+      where: {
+        id: E2E_FIXTURES.editorUser.id,
+      },
+      create: {
+        id: E2E_FIXTURES.editorUser.id,
+        email: E2E_FIXTURES.editorUser.email,
+        passwordHash: editorPasswordHash,
+      },
+      update: {
+        email: E2E_FIXTURES.editorUser.email,
+        passwordHash: editorPasswordHash,
+        disabledAt: null,
+      },
+    });
 
+    await prisma.user.upsert({
+      where: {
+        id: E2E_FIXTURES.viewerUser.id,
+      },
+      create: {
+        id: E2E_FIXTURES.viewerUser.id,
+        email: E2E_FIXTURES.viewerUser.email,
+        passwordHash: viewerPasswordHash,
+      },
+      update: {
+        email: E2E_FIXTURES.viewerUser.email,
+        passwordHash: viewerPasswordHash,
+        disabledAt: null,
+      },
+    });
     await prisma.organization.upsert({
       where: {
         id: E2E_FIXTURES.organization.id,
@@ -112,7 +154,39 @@ export async function seedE2eDatabase(config: AppEnv): Promise<void> {
         role: MembershipRole.OWNER,
       },
     });
+    await prisma.membership.upsert({
+      where: {
+        organizationId_userId: {
+          organizationId: E2E_FIXTURES.organization.id,
+          userId: E2E_FIXTURES.editorUser.id,
+        },
+      },
+      create: {
+        organizationId: E2E_FIXTURES.organization.id,
+        userId: E2E_FIXTURES.editorUser.id,
+        role: MembershipRole.EDITOR,
+      },
+      update: {
+        role: MembershipRole.EDITOR,
+      },
+    });
 
+    await prisma.membership.upsert({
+      where: {
+        organizationId_userId: {
+          organizationId: E2E_FIXTURES.organization.id,
+          userId: E2E_FIXTURES.viewerUser.id,
+        },
+      },
+      create: {
+        organizationId: E2E_FIXTURES.organization.id,
+        userId: E2E_FIXTURES.viewerUser.id,
+        role: MembershipRole.VIEWER,
+      },
+      update: {
+        role: MembershipRole.VIEWER,
+      },
+    });
     await prisma.project.upsert({
       where: {
         id: E2E_FIXTURES.project.id,
@@ -130,6 +204,28 @@ export async function seedE2eDatabase(config: AppEnv): Promise<void> {
         archivedAt: null,
       },
     });
+    await prisma.environment.upsert({
+      where: {
+        id: E2E_FIXTURES.environment.id,
+      },
+      create: {
+        id: E2E_FIXTURES.environment.id,
+        organizationId: E2E_FIXTURES.environment.organizationId,
+        projectId: E2E_FIXTURES.environment.projectId,
+        key: E2E_FIXTURES.environment.key,
+        name: E2E_FIXTURES.environment.name,
+        draftRevision: 0,
+      },
+      update: {
+        organizationId: E2E_FIXTURES.environment.organizationId,
+        projectId: E2E_FIXTURES.environment.projectId,
+        key: E2E_FIXTURES.environment.key,
+        name: E2E_FIXTURES.environment.name,
+        archivedAt: null,
+        draftRevision: 0,
+      },
+    });
+
     await prisma.project.deleteMany({
       where: {
         organizationId: E2E_FIXTURES.organization.id,
