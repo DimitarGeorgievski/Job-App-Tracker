@@ -15,7 +15,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { conditionSchema } from '@squidflag/contracts';
 import { _CreateFlagDto, CreateFlagDto } from './dto/create-flag.dto';
 import { z } from 'zod';
-import { type Prisma } from 'generated/prisma/client';
+import { PublishedSnapshotStatus, type Prisma } from 'generated/prisma/client';
 import { CreateRuleDto as CreateRuleSchema } from './dto/create-rule.dto';
 import { UpdateRuleDto as UpdateRuleSchema } from './dto/update-rule.dto';
 import { UpdateFlagDto as UpdateFlagSchema } from './dto/update-flag.dto';
@@ -1283,7 +1283,7 @@ export class FlagService {
     publishedSnapshot: {
       id: string;
       version: number;
-      status: 'PENDING' | 'ACTIVE' | 'SUPERSEDED' | 'FAILED';
+      status: PublishedSnapshotStatus;
       storageKey: string;
     };
     draftRevision: number;
@@ -1466,15 +1466,19 @@ export class FlagService {
     });
 
     // Upload to R2 outside of any DB transaction.
-    let r2UploadResult: { sizeBytes: number; checksum: string } | null = null;
+    let uploadFailed = false;
 
-    if (this.r2) {
-      r2UploadResult = await this.r2.putObject(storageKey, body);
+    try {
+      if (!this.r2) {
+        throw new Error('R2 service is not available');
+      }
+
+      await this.r2.putObject(storageKey, body);
+    } catch {
+      uploadFailed = true;
     }
 
-    // If R2 upload failed, mark the snapshot as FAILED and return.
-    // The previous ACTIVE snapshot remains untouched.
-    if (!r2UploadResult) {
+    if (uploadFailed) {
       await this.prisma.publishedSnapshot.update({
         where: { id: pendingSnapshot.id },
         data: {
@@ -1488,7 +1492,7 @@ export class FlagService {
         publishedSnapshot: {
           id: pendingSnapshot.id,
           version: pendingSnapshot.version,
-          status: 'FAILED' as const,
+          status: 'FAILED',
           storageKey: pendingSnapshot.storageKey,
         },
         draftRevision: env.draftRevision,

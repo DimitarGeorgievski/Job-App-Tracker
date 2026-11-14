@@ -1,4 +1,11 @@
-import { describe, expect, it, beforeAll, afterAll } from '@jest/globals';
+import {
+  describe,
+  expect,
+  it,
+  beforeAll,
+  afterAll,
+  afterEach,
+} from '@jest/globals';
 import { HttpStatus } from '@nestjs/common';
 import { type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { buildTestApp } from '../test/helpers/build-test-app';
@@ -28,6 +35,15 @@ interface FlagEnvironmentConfig {
   enabled: boolean;
   defaultValue: boolean;
   rules: FlagRule[];
+}
+
+interface PublishResponse {
+  success: boolean;
+  publishedSnapshot: {
+    status: string;
+    version: number;
+    storageKey: string;
+  };
 }
 
 interface FlagCreateResponse {
@@ -165,7 +181,9 @@ describe('FlagController (e2e)', () => {
     const cookie =
       user.email === E2E_FIXTURES.editorUser.email
         ? editorCookie
-        : viewerCookie;
+        : user.email === E2E_FIXTURES.viewerUser.email
+          ? viewerCookie
+          : authCookie;
     return {
       cookie,
       origin: E2E_ORIGIN,
@@ -1437,11 +1455,6 @@ describe('FlagController (e2e)', () => {
         body: { targetVersion: snapshotVersion },
         headers: headers(),
       });
-      console.log(
-        'Revert response:',
-        revertResult.statusCode,
-        revertResult.body,
-      );
       expect(revertResult.statusCode).toBe(HttpStatus.OK);
 
       const env = await prisma.environment.findUniqueOrThrow({
@@ -1512,6 +1525,319 @@ describe('FlagController (e2e)', () => {
         headers: headersFor(E2E_FIXTURES.viewerUser),
       });
       expect(result.statusCode).toBe(HttpStatus.FORBIDDEN);
+    });
+
+    describe('Publishing', () => {
+      beforeAll(async () => {
+        // Clean up any existing PublishedSnapshot records for test isolation
+        await prisma.publishedSnapshot.deleteMany({
+          where: {
+            environmentId: E2E_FIXTURES.environment.id,
+          },
+        });
+
+        // Create a flag with rules for publishing tests
+        const createFlagResult = await app.inject({
+          method: 'POST',
+          url:
+            '/flags?orgId=' +
+            E2E_FIXTURES.organization.id +
+            '&projId=' +
+            E2E_FIXTURES.project.id +
+            '&envId=' +
+            E2E_FIXTURES.environment.id,
+          body: createFlagDto({
+            name: 'Publish Test Flag',
+            key: 'publish-test-flag',
+          }),
+          headers: headersFor(E2E_FIXTURES.user),
+        });
+        expect(createFlagResult.statusCode).toBe(HttpStatus.CREATED);
+        const createdFlag = await prisma.featureFlag.findFirst({
+          where: { key: 'publish-test-flag' },
+          select: { id: true },
+        });
+        if (!createdFlag) {
+          throw new Error('Flag not found after creation');
+        }
+      });
+
+      afterEach(async () => {
+        // Clean up PublishedSnapshot after each test for isolation
+        await prisma.publishedSnapshot.deleteMany({
+          where: {
+            environmentId: E2E_FIXTURES.environment.id,
+          },
+        });
+      });
+
+      afterAll(async () => {
+        // Clean up PublishedSnapshot records to ensure test isolation
+        await prisma.publishedSnapshot.deleteMany({
+          where: {
+            environmentId: E2E_FIXTURES.environment.id,
+          },
+        });
+      });
+
+      beforeAll(async () => {
+        // Add a rule to the flag
+        const addRuleResult = await app.inject({
+          method: 'POST',
+          url: `/flags/publish-test-flag/rules?orgId=${E2E_FIXTURES.organization.id}&projId=${E2E_FIXTURES.project.id}&envId=${E2E_FIXTURES.environment.id}`,
+          body: {
+            priority: 1,
+            conditions: [
+              { attribute: 'country', operator: 'equals', value: 'US' },
+            ],
+            value: true,
+          },
+          headers: headersFor(E2E_FIXTURES.user),
+        });
+        expect(addRuleResult.statusCode).toBe(HttpStatus.CREATED);
+      });
+
+      it('should successfully publish a first snapshot', async () => {
+        const result = await app.inject({
+          method: 'POST',
+          url:
+            '/flags/publish-test-flag/publish?orgId=' +
+            E2E_FIXTURES.organization.id +
+            '&projId=' +
+            E2E_FIXTURES.project.id +
+            '&envId=' +
+            E2E_FIXTURES.environment.id,
+          headers: headersFor(E2E_FIXTURES.user),
+        });
+        expect(result.statusCode).toBe(HttpStatus.OK);
+        const body = result.json<PublishResponse>();
+        expect(body.success).toBe(true);
+        expect(body.publishedSnapshot).toBeDefined();
+        expect(body.publishedSnapshot.status).toBe('ACTIVE');
+        expect(body.publishedSnapshot.version).toBe(1);
+        expect(body.publishedSnapshot.storageKey).toContain(
+          `snapshots/${E2E_FIXTURES.environment.id}/1.json`,
+        );
+      });
+
+      it('should be idempotent when publishing the same draftRevision', async () => {
+        // Publish again with the same draftRevision - should return existing ACTIVE
+        const result = await app.inject({
+          method: 'POST',
+          url:
+            '/flags/publish-test-flag/publish?orgId=' +
+            E2E_FIXTURES.organization.id +
+            '&projId=' +
+            E2E_FIXTURES.project.id +
+            '&envId=' +
+            E2E_FIXTURES.environment.id,
+          headers: headersFor(E2E_FIXTURES.user),
+        });
+        expect(result.statusCode).toBe(HttpStatus.OK);
+        const body = result.json<PublishResponse>();
+        expect(body.success).toBe(true);
+        expect(body.publishedSnapshot.status).toBe('ACTIVE');
+        expect(body.publishedSnapshot.version).toBe(1);
+      });
+
+      it('should transition previous ACTIVE to SUPERSEDED after draft modification', async () => {
+        // First publish creates version 1 ACTIVE
+        await app.inject({
+          method: 'POST',
+          url:
+            '/flags/publish-test-flag/publish?orgId=' +
+            E2E_FIXTURES.organization.id +
+            '&projId=' +
+            E2E_FIXTURES.project.id +
+            '&envId=' +
+            E2E_FIXTURES.environment.id,
+          headers: headersFor(E2E_FIXTURES.user),
+        });
+
+        // Make a real draft modification (add a rule) between publishes
+        await app.inject({
+          method: 'POST',
+          url: `/flags/publish-test-flag/rules?orgId=${E2E_FIXTURES.organization.id}&projId=${E2E_FIXTURES.project.id}&envId=${E2E_FIXTURES.environment.id}`,
+          body: {
+            priority: 1,
+            conditions: [
+              {
+                attribute: 'environment',
+                operator: 'equals',
+                value: 'production',
+              },
+            ],
+            value: true,
+          },
+          headers: headersFor(E2E_FIXTURES.user),
+        });
+
+        // Second publish should create version 2 and make version 1 SUPERSEDED
+        const result2 = await app.inject({
+          method: 'POST',
+          url:
+            '/flags/publish-test-flag/publish?orgId=' +
+            E2E_FIXTURES.organization.id +
+            '&projId=' +
+            E2E_FIXTURES.project.id +
+            '&envId=' +
+            E2E_FIXTURES.environment.id,
+          headers: headersFor(E2E_FIXTURES.user),
+        });
+        expect(result2.statusCode).toBe(HttpStatus.OK);
+
+        // Check that only one ACTIVE snapshot exists
+        const snapshots = await prisma.publishedSnapshot.findMany({
+          where: { environmentId: E2E_FIXTURES.environment.id },
+          orderBy: { version: 'desc' },
+        });
+        expect(snapshots.filter((s) => s.status === 'ACTIVE').length).toBe(1);
+        expect(snapshots[0]?.status).toBe('ACTIVE');
+        expect(snapshots[0]?.version).toBe(2);
+
+        // Check that the previous version is SUPERSEDED
+        const superseded = snapshots.find((s) => s.version === 1);
+        expect(superseded?.status).toBe('SUPERSEDED');
+      });
+
+      it('should preserve draftRevision after publish', async () => {
+        // Get current draftRevision before publish
+        const beforePublish = await prisma.environment.findFirst({
+          where: { id: E2E_FIXTURES.environment.id },
+          select: { draftRevision: true },
+        });
+
+        // Publish snapshot
+        const result = await app.inject({
+          method: 'POST',
+          url:
+            '/flags/publish-test-flag/publish?orgId=' +
+            E2E_FIXTURES.organization.id +
+            '&projId=' +
+            E2E_FIXTURES.project.id +
+            '&envId=' +
+            E2E_FIXTURES.environment.id,
+          headers: headersFor(E2E_FIXTURES.user),
+        });
+        expect(result.statusCode).toBe(HttpStatus.OK);
+
+        // Check that draftRevision was NOT incremented
+        const afterPublish = await prisma.environment.findFirst({
+          where: { id: E2E_FIXTURES.environment.id },
+          select: { draftRevision: true },
+        });
+        expect(afterPublish?.draftRevision).toBe(beforePublish?.draftRevision);
+      });
+
+      it('should result in FAILED when R2 upload fails', async () => {
+        // Clean up any existing PublishedSnapshot records so the idempotency
+        // check does not short-circuit the R2 failure path.
+        await prisma.publishedSnapshot.deleteMany({
+          where: { environmentId: E2E_FIXTURES.environment.id },
+        });
+        mockR2.failNextPutObject(new Error('Mock R2 upload failed'));
+        const result = await app.inject({
+          method: 'POST',
+          url:
+            '/flags/publish-test-flag/publish?orgId=' +
+            E2E_FIXTURES.organization.id +
+            '&projId=' +
+            E2E_FIXTURES.project.id +
+            '&envId=' +
+            E2E_FIXTURES.environment.id,
+          headers: headersFor(E2E_FIXTURES.user),
+        });
+        expect(result.statusCode).toBe(HttpStatus.OK);
+        const body = result.json<PublishResponse>();
+        expect(body.success).toBe(false);
+        expect(body.publishedSnapshot).toBeDefined();
+        expect(body.publishedSnapshot.status).toBe('FAILED');
+
+        const snapshots = await prisma.publishedSnapshot.findMany({
+          where: { environmentId: E2E_FIXTURES.environment.id },
+          orderBy: { version: 'desc' },
+        });
+        const failedSnapshot = snapshots.find((s) => s.status === 'FAILED');
+        expect(failedSnapshot).toBeDefined();
+        expect(failedSnapshot?.version).toBe(1);
+
+        const activeSnapshots = snapshots.filter((s) => s.status === 'ACTIVE');
+        expect(activeSnapshots.length).toBe(0);
+
+        const pendingSnapshots = snapshots.filter(
+          (s) => s.status === 'PENDING',
+        );
+        expect(pendingSnapshots.length).toBe(0);
+      });
+
+      it('should allocate correct snapshot version with draft modification', async () => {
+        // Establish baseline: first publish creates version 1
+        const result1 = await app.inject({
+          method: 'POST',
+          url:
+            '/flags/publish-test-flag/publish?orgId=' +
+            E2E_FIXTURES.organization.id +
+            '&projId=' +
+            E2E_FIXTURES.project.id +
+            '&envId=' +
+            E2E_FIXTURES.environment.id,
+          headers: headersFor(E2E_FIXTURES.user),
+        });
+        expect(result1.statusCode).toBe(HttpStatus.OK);
+        expect(result1.json<PublishResponse>().publishedSnapshot.version).toBe(
+          1,
+        );
+
+        // Make a real draft modification between publishes (add a rule)
+        await app.inject({
+          method: 'POST',
+          url: `/flags/publish-test-flag/rules?orgId=${E2E_FIXTURES.organization.id}&projId=${E2E_FIXTURES.project.id}&envId=${E2E_FIXTURES.environment.id}`,
+          body: {
+            priority: 1,
+            conditions: [
+              {
+                attribute: 'environment',
+                operator: 'equals',
+                value: 'production',
+              },
+            ],
+            value: true,
+          },
+          headers: headersFor(E2E_FIXTURES.user),
+        });
+
+        // Second publish should create version 2
+        const result2 = await app.inject({
+          method: 'POST',
+          url:
+            '/flags/publish-test-flag/publish?orgId=' +
+            E2E_FIXTURES.organization.id +
+            '&projId=' +
+            E2E_FIXTURES.project.id +
+            '&envId=' +
+            E2E_FIXTURES.environment.id,
+          headers: headersFor(E2E_FIXTURES.user),
+        });
+        expect(result2.statusCode).toBe(HttpStatus.OK);
+        expect(result2.json<PublishResponse>().publishedSnapshot.version).toBe(
+          2,
+        );
+
+        // Verify in DB
+        const dbSnapshot = await prisma.publishedSnapshot.findFirst({
+          where: { version: 2 },
+          select: { version: true, status: true },
+        });
+        expect(dbSnapshot?.version).toBe(2);
+        expect(dbSnapshot?.status).toBe('ACTIVE');
+
+        // Verify version 1 is SUPERSEDED
+        const v1Snapshot = await prisma.publishedSnapshot.findFirst({
+          where: { version: 1 },
+          select: { version: true, status: true },
+        });
+        expect(v1Snapshot?.status).toBe('SUPERSEDED');
+      });
     });
   });
 });
