@@ -1,4 +1,4 @@
-import { NestFactory } from '@nestjs/core';
+import { Test } from '@nestjs/testing';
 import {
   FastifyAdapter,
   type NestFastifyApplication,
@@ -10,6 +10,8 @@ import { parseEnv, type AppRole } from '../../src/platform/config/env.schema';
 import { e2eConfig } from '../test-config';
 import { assertTestDatabase } from '../assert-test-database';
 import fastifyCookie from '@fastify/cookie';
+import { MockR2Service } from '../mocks/mock-r2.service';
+import { R2Service } from '../../src/platform/storage/r2/r2.service';
 
 interface BuildTestAppOptions {
   role: AppRole;
@@ -26,10 +28,26 @@ export async function buildTestApp({
     APP_ROLE: role,
   });
   assertTestDatabase(config);
-  const app = await NestFactory.create<NestFastifyApplication>(
-    role === 'evaluator'
-      ? EvaluatorAppModule.register(config)
-      : AppModule.register(config),
+  const mockR2Service = new MockR2Service();
+  const moduleBuilder = Test.createTestingModule({
+    imports: [
+      role === 'evaluator'
+        ? EvaluatorAppModule.register(config)
+        : AppModule.register(config),
+    ],
+    providers: [
+      {
+        provide: MockR2Service,
+        useValue: mockR2Service,
+      },
+    ],
+  });
+
+  if (role !== 'evaluator') {
+    moduleBuilder.overrideProvider(R2Service).useValue(mockR2Service);
+  }
+  const moduleRef = await moduleBuilder.compile();
+  const app = moduleRef.createNestApplication<NestFastifyApplication>(
     new FastifyAdapter({
       bodyLimit: 1048576,
       trustProxy: false,

@@ -17,6 +17,7 @@ describe('Auth integration tests', () => {
     authService = app.get(AuthService);
     prismaService = app.get(PrismaService);
     await app.init();
+    await prismaService.publishedSnapshot.deleteMany({});
     await prismaService.refreshToken.deleteMany({});
     await prismaService.membership.deleteMany({});
     await prismaService.user.deleteMany({});

@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { APP_ENV } from '../../config/app-env.token';
 import type { AppEnv } from '../../config/env.schema';
 import { R2Service } from './r2.service';
 
+@Global()
 @Module({})
 export class R2Module {
   static register(config: AppEnv) {

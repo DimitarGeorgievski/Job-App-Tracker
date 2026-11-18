@@ -1,11 +1,17 @@
 import {
+  Inject,
   Injectable,
   NotFoundException,
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../platform/database/prisma.service';
-import { randomUUID } from 'node:crypto';
+import { R2Service } from '../platform/storage/r2/r2.service';
+import {
+  EnvironmentSnapshotPayloadDto,
+  EnvironmentSnapshotPayload,
+} from './dto/snapshot-payload.dto';
+import { randomUUID, createHash } from 'node:crypto';
 import { conditionSchema } from '@squidflag/contracts';
 import { _CreateFlagDto, CreateFlagDto } from './dto/create-flag.dto';
 import { z } from 'zod';
@@ -13,10 +19,18 @@ import { type Prisma } from 'generated/prisma/client';
 import { CreateRuleDto as CreateRuleSchema } from './dto/create-rule.dto';
 import { UpdateRuleDto as UpdateRuleSchema } from './dto/update-rule.dto';
 import { UpdateFlagDto as UpdateFlagSchema } from './dto/update-flag.dto';
+import { PinoLogger } from 'nestjs-pino';
+import { uuidRegex } from 'src/rbac/uuid-regex';
 
 @Injectable()
 export class FlagService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(R2Service) private readonly r2: R2Service,
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(FlagService.name);
+  }
 
   private async resolveOrganizationId(
     orgId: string | undefined,
@@ -533,6 +547,75 @@ export class FlagService {
     });
   }
 
+  async saveDraft(
+    flagKey: string,
+    orgId: string,
+    projId: string,
+    envId: string,
+    userId: string,
+  ): Promise<{ success: boolean }> {
+    const resolvedOrgId = await this.resolveOrganizationId(orgId, projId);
+
+    if (!uuidRegex.test(envId)) {
+      throw new NotFoundException('Environment not found');
+    }
+
+    const flag = await this.prisma.featureFlag.findFirst({
+      where: {
+        key: flagKey,
+        organizationId: resolvedOrgId,
+        projectId: projId,
+        archivedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!flag) {
+      throw new NotFoundException('Flag not found');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const env = await tx.environment.findFirst({
+        where: {
+          id: envId,
+          organizationId: resolvedOrgId,
+          projectId: projId,
+          archivedAt: null,
+        },
+        select: { id: true, draftRevision: true },
+      });
+
+      if (!env) {
+        throw new NotFoundException('Environment not found');
+      }
+
+      await tx.environment.update({
+        where: { id: env.id },
+        data: {
+          draftRevision: {
+            increment: 1,
+          },
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          organizationId: resolvedOrgId,
+          actorUserId: userId,
+          actorLabel: userId,
+          action: 'draft.saved',
+          targetType: 'featureFlag',
+          targetId: flag.id,
+          metadata: {},
+        },
+      });
+
+      return {
+        success: true,
+      };
+    });
+  }
+
   async addRule(
     flagKey: string,
     orgId: string,
@@ -814,18 +897,25 @@ export class FlagService {
         throw new NotFoundException('Flag not found');
       }
 
+      const config = await tx.flagEnvironmentConfig.findFirst({
+        where: {
+          organizationId: resolvedOrgId,
+          projectId: projId,
+          environmentId: env.id,
+          flagId: flag.id,
+        },
+        select: { id: true },
+      });
+
+      if (!config) {
+        throw new NotFoundException('Flag configuration not found');
+      }
+
       const rule = await tx.flagRule.findFirst({
         where: {
           id: ruleId,
           organizationId: resolvedOrgId,
-          flagEnvironmentConfig: {
-            is: {
-              organizationId: resolvedOrgId,
-              projectId: projId,
-              environmentId: env.id,
-              flagId: flag.id,
-            },
-          },
+          flagEnvironmentConfigId: config.id,
         },
         select: {
           id: true,
@@ -861,6 +951,326 @@ export class FlagService {
       return {
         success: true,
       };
+    });
+  }
+
+  async discardDraft(
+    flagKey: string,
+    orgId: string,
+    projId: string,
+    envId: string,
+  ): Promise<{ success: boolean }> {
+    const resolvedOrgId = await this.resolveOrganizationId(orgId, projId);
+
+    if (!uuidRegex.test(envId)) {
+      throw new NotFoundException('Environment not found');
+    }
+    const flag = await this.prisma.featureFlag.findFirst({
+      where: {
+        key: flagKey,
+        organizationId: resolvedOrgId,
+        projectId: projId,
+        archivedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!flag) {
+      throw new NotFoundException('Flag not found');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const env = await tx.environment.findFirst({
+        where: {
+          id: envId,
+          organizationId: resolvedOrgId,
+          projectId: projId,
+          archivedAt: null,
+        },
+        select: { id: true, draftRevision: true },
+      });
+
+      if (!env) {
+        throw new NotFoundException('Environment not found');
+      }
+
+      const flags = await tx.featureFlag.findMany({
+        where: {
+          organizationId: resolvedOrgId,
+          projectId: projId,
+          archivedAt: null,
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      });
+
+      const publishedSnapshot = await tx.publishedSnapshot.findFirst({
+        where: {
+          environmentId: env.id,
+          status: 'ACTIVE',
+        },
+        orderBy: {
+          version: 'desc',
+        },
+        select: {
+          id: true,
+          version: true,
+          storageKey: true,
+          checksum: true,
+          draftRevision: true,
+        },
+      });
+
+      if (!publishedSnapshot) {
+        return {
+          success: false,
+        };
+      }
+
+      if (!this.r2) {
+        throw new BadRequestException('R2Service not configured');
+      }
+      const { body: bodyBytes, checksum: r2Checksum } = await this.r2.getObject(
+        publishedSnapshot.storageKey,
+      );
+      const payloadChecksum = createHash('sha256')
+        .update(bodyBytes)
+        .digest('hex');
+      if (
+        payloadChecksum !== r2Checksum ||
+        payloadChecksum !== publishedSnapshot.checksum
+      ) {
+        throw new BadRequestException('Snapshot checksum mismatch');
+      }
+      const bodyString = Buffer.from(bodyBytes).toString('utf8');
+      const parsedBody: unknown = JSON.parse(bodyString);
+      const payload: EnvironmentSnapshotPayload =
+        EnvironmentSnapshotPayloadDto.parse(parsedBody);
+      return this.restoreFromSnapshot(
+        tx,
+        env.id,
+        resolvedOrgId,
+        projId,
+        flags,
+        payload,
+      );
+    });
+  }
+  private async restoreFromSnapshot(
+    tx: Prisma.TransactionClient,
+    envId: string,
+    resolvedOrgId: string,
+    projId: string,
+    flags: Array<{ id: string }>,
+    payload: EnvironmentSnapshotPayload,
+  ): Promise<{ success: boolean }> {
+    for (const flag of flags) {
+      const config = await tx.flagEnvironmentConfig.findFirst({
+        where: {
+          organizationId: resolvedOrgId,
+          projectId: projId,
+          environmentId: envId,
+          flagId: flag.id,
+        },
+        select: { id: true, enabled: true, defaultValue: true, rules: true },
+      });
+
+      if (!config) {
+        continue;
+      }
+      const snapshotFlag = payload.flags.find((sf) => sf.flagId === flag.id);
+      if (!snapshotFlag) {
+        continue;
+      }
+      await tx.flagEnvironmentConfig.update({
+        where: { id: config.id },
+        data: {
+          enabled: snapshotFlag.enabled,
+          defaultValue: snapshotFlag.defaultValue,
+        },
+      });
+      const snapshotRuleIds = new Set(snapshotFlag.rules.map((r) => r.id));
+      await tx.flagRule.deleteMany({
+        where: {
+          flagEnvironmentConfigId: config.id,
+          id: {
+            notIn: [...snapshotRuleIds],
+          },
+        },
+      });
+      const existingRules = await tx.flagRule.findMany({
+        where: { flagEnvironmentConfigId: config.id },
+        select: {
+          id: true,
+          priority: true,
+          conditions: true,
+          result: true,
+        },
+      });
+      const existingRuleMap = new Map<
+        string,
+        {
+          id: string;
+          priority: number;
+          conditions: {
+            attribute: string;
+            operator: string;
+            value: unknown;
+          };
+          result: boolean;
+        }
+      >(
+        existingRules.map((r) => [
+          r.id,
+          {
+            id: r.id,
+            priority: r.priority,
+            conditions: r.conditions as {
+              attribute: string;
+              operator: string;
+              value: unknown;
+            },
+            result: r.result,
+          },
+        ]),
+      );
+      for (const payloadRule of snapshotFlag.rules) {
+        if (existingRuleMap.has(payloadRule.id)) {
+          const existingRule = existingRuleMap.get(payloadRule.id)!;
+          await tx.flagRule.update({
+            where: { id: existingRule.id },
+            data: {
+              priority: payloadRule.priority,
+              conditions: payloadRule.conditions as Prisma.InputJsonValue,
+              result: payloadRule.result,
+            },
+          });
+        } else {
+          await tx.flagRule.create({
+            data: {
+              id: payloadRule.id,
+              organizationId: resolvedOrgId,
+              flagEnvironmentConfigId: config.id,
+              priority: payloadRule.priority,
+              conditions: payloadRule.conditions as Prisma.InputJsonValue,
+              result: payloadRule.result,
+            },
+          });
+        }
+      }
+    }
+
+    return { success: true };
+  }
+
+  async revertDraft(
+    flagKey: string,
+    orgId: string,
+    projId: string,
+    envId: string,
+    body: { targetVersion: number },
+  ): Promise<{ success: boolean }> {
+    const resolvedOrgId = await this.resolveOrganizationId(orgId, projId);
+
+    if (!uuidRegex.test(envId)) {
+      throw new NotFoundException('Environment not found');
+    }
+    const flag = await this.prisma.featureFlag.findFirst({
+      where: {
+        key: flagKey,
+        organizationId: resolvedOrgId,
+        projectId: projId,
+        archivedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!flag) {
+      throw new NotFoundException('Flag not found');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const env = await tx.environment.findFirst({
+        where: {
+          id: envId,
+          organizationId: resolvedOrgId,
+          projectId: projId,
+          archivedAt: null,
+        },
+        select: { id: true, draftRevision: true },
+      });
+
+      if (!env) {
+        throw new NotFoundException('Environment not found');
+      }
+      const targetSnapshot = await tx.publishedSnapshot.findFirst({
+        where: {
+          environmentId: env.id,
+          status: 'ACTIVE',
+          version: body.targetVersion,
+        },
+        select: {
+          id: true,
+          version: true,
+          storageKey: true,
+          checksum: true,
+          draftRevision: true,
+        },
+      });
+
+      if (!targetSnapshot) {
+        throw new NotFoundException('Snapshot not found');
+      }
+
+      let payload: EnvironmentSnapshotPayload;
+      try {
+        if (!this.r2) {
+          throw new BadRequestException('R2Service not configured');
+        } else {
+          const { body: bodyBytes, checksum: r2Checksum } =
+            await this.r2.getObject(targetSnapshot.storageKey);
+          const payloadChecksum = createHash('sha256')
+            .update(bodyBytes)
+            .digest('hex');
+          if (
+            payloadChecksum !== r2Checksum ||
+            payloadChecksum !== targetSnapshot.checksum
+          ) {
+            throw new BadRequestException('Snapshot checksum mismatch');
+          }
+          payload = EnvironmentSnapshotPayloadDto.parse(
+            JSON.parse(Buffer.from(bodyBytes).toString('utf8')),
+          );
+        }
+      } catch (error) {
+        if (error instanceof BadRequestException) {
+          throw error;
+        }
+        throw new BadRequestException('Failed to read snapshot', {
+          cause: error,
+        });
+      }
+
+      const flags = await tx.featureFlag.findMany({
+        where: {
+          organizationId: resolvedOrgId,
+          projectId: projId,
+          archivedAt: null,
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      });
+
+      return this.restoreFromSnapshot(
+        tx,
+        env.id,
+        resolvedOrgId,
+        projId,
+        flags,
+        payload,
+      );
     });
   }
 }

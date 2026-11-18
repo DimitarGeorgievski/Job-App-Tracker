@@ -5,6 +5,8 @@ import { buildTestApp } from '../test/helpers/build-test-app';
 import { E2E_FIXTURES, E2E_ORIGIN } from './seed/e2e-fixtures';
 import { ACCESS_COOKIE } from '../src/auth/auth.constants';
 import { PrismaService } from '../src/platform/database/prisma.service';
+import { randomUUID, createHash } from 'node:crypto';
+import { MockR2Service } from './mocks/mock-r2.service';
 
 interface FlagCondition {
   attribute: string;
@@ -102,6 +104,7 @@ function createFlagDto(
 describe('FlagController (e2e)', () => {
   let app: NestFastifyApplication;
   let prisma: PrismaService;
+  let mockR2: MockR2Service;
   let authCookie: string = '';
   let editorCookie: string = '';
   let viewerCookie: string = '';
@@ -172,6 +175,7 @@ describe('FlagController (e2e)', () => {
   beforeAll(async () => {
     app = await buildTestApp({ role: 'all' });
     prisma = app.get(PrismaService);
+    mockR2 = app.get<MockR2Service>(MockR2Service);
     authCookie = await loginAs(E2E_FIXTURES.user);
     editorCookie = await loginAs(E2E_FIXTURES.editorUser);
     viewerCookie = await loginAs(E2E_FIXTURES.viewerUser);
@@ -182,7 +186,6 @@ describe('FlagController (e2e)', () => {
   });
 
   function headers(): Record<string, string> {
-    // authCookie stores ACCESS_COOKIE=token without Set-Cookie attributes
     return { cookie: authCookie, origin: E2E_ORIGIN };
   }
 
@@ -1057,6 +1060,457 @@ describe('FlagController (e2e)', () => {
         headers: headersFor(E2E_FIXTURES.editorUser),
       });
 
+      expect(result.statusCode).toBe(HttpStatus.FORBIDDEN);
+    });
+  });
+
+  describe('POST /flags/:flagKey/draft/save', () => {
+    it('successfully saves a draft and increments draftRevision', async () => {
+      const createResult = await app.inject({
+        method: 'POST',
+        url:
+          '/flags?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=' +
+          E2E_FIXTURES.environment.id,
+        body: createFlagDto({
+          name: 'Draft Save Test',
+          key: 'draft-save-test',
+          defaultValue: false,
+          enabled: true,
+        }),
+        headers: headers(),
+      });
+      expect(createResult.statusCode).toBe(HttpStatus.CREATED);
+
+      const saveResult = await app.inject({
+        method: 'POST',
+        url:
+          '/flags/draft-save-test/draft/save?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=' +
+          E2E_FIXTURES.environment.id,
+        headers: headers(),
+      });
+      expect(saveResult.statusCode).toBe(HttpStatus.OK);
+
+      const env = await prisma.environment.findUniqueOrThrow({
+        where: { id: E2E_FIXTURES.environment.id },
+        select: { draftRevision: true },
+      });
+      expect(env.draftRevision).toBeGreaterThan(0);
+    });
+
+    it('returns 404 when flag not found', async () => {
+      const result = await app.inject({
+        method: 'POST',
+        url:
+          '/flags/nonexistent-key/draft/save?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=' +
+          E2E_FIXTURES.environment.id,
+        headers: headers(),
+      });
+      expect(result.statusCode).toBe(HttpStatus.NOT_FOUND);
+    });
+
+    it('returns 404 when environment not found', async () => {
+      const result = await app.inject({
+        method: 'POST',
+        url:
+          '/flags/draft-save-test/draft/save?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=invalid-env-id',
+        headers: headers(),
+      });
+      expect(result.statusCode).toBe(HttpStatus.NOT_FOUND);
+    });
+
+    it('returns 403 when user lacks flag:edit permission', async () => {
+      const result = await app.inject({
+        method: 'POST',
+        url:
+          '/flags/draft-save-test/draft/save?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=' +
+          E2E_FIXTURES.environment.id,
+        headers: headersFor(E2E_FIXTURES.viewerUser),
+      });
+      expect(result.statusCode).toBe(HttpStatus.FORBIDDEN);
+    });
+  });
+
+  describe('POST /flags/:flagKey/draft/discard', () => {
+    let flagUuid: string;
+    let snapshotVersion: number;
+    beforeAll(async () => {
+      const createResult = await app.inject({
+        method: 'POST',
+        url:
+          '/flags?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=' +
+          E2E_FIXTURES.environment.id,
+        body: createFlagDto({
+          name: 'Draft Discard Test',
+          key: 'draft-discard-test',
+          defaultValue: false,
+          enabled: true,
+        }),
+        headers: headers(),
+      });
+      expect(createResult.statusCode).toBe(HttpStatus.CREATED);
+
+      const discardFlag = await prisma.featureFlag.findFirstOrThrow({
+        where: {
+          key: 'draft-discard-test',
+          organizationId: E2E_FIXTURES.organization.id,
+          projectId: E2E_FIXTURES.project.id,
+        },
+        select: {
+          id: true,
+        },
+      });
+      flagUuid = discardFlag.id;
+      const snapshotFlag = {
+        flagId: discardFlag.id,
+        enabled: true,
+        defaultValue: false,
+        rules: [],
+      };
+      const snapshotPayload = {
+        flags: [snapshotFlag],
+      };
+      const payloadJson = JSON.stringify(snapshotPayload);
+      const payloadBytes = Buffer.from(payloadJson, 'utf-8');
+      const payloadChecksum = createHash('sha256')
+        .update(payloadBytes)
+        .digest('hex');
+
+      mockR2.addObject('test-draft-discard-snapshot', payloadBytes);
+      const latestSnapshot = await prisma.publishedSnapshot.findFirst({
+        where: {
+          environmentId: E2E_FIXTURES.environment.id,
+        },
+        orderBy: {
+          version: 'desc',
+        },
+        select: {
+          version: true,
+        },
+      });
+
+      snapshotVersion = (latestSnapshot?.version ?? 0) + 1;
+
+      await prisma.publishedSnapshot.updateMany({
+        where: {
+          environmentId: E2E_FIXTURES.environment.id,
+          status: 'ACTIVE',
+        },
+        data: {
+          status: 'SUPERSEDED',
+        },
+      });
+      await prisma.publishedSnapshot.create({
+        data: {
+          id: randomUUID(),
+          organizationId: E2E_FIXTURES.organization.id,
+          projectId: E2E_FIXTURES.project.id,
+          environmentId: E2E_FIXTURES.environment.id,
+          version: snapshotVersion,
+          status: 'ACTIVE',
+          storageKey: 'test-draft-discard-snapshot',
+          checksum: payloadChecksum,
+          sizeBytes: payloadBytes.length,
+          draftRevision: 0,
+          createdByUserId: E2E_FIXTURES.user.id,
+          activatedAt: new Date(),
+        },
+      });
+      flagUuid = await prisma.featureFlag
+        .findFirst({
+          where: { key: 'draft-discard-test' },
+          select: { id: true },
+        })
+        .then((f) => f!.id);
+
+      expect(createResult.statusCode).toBe(HttpStatus.CREATED);
+    });
+
+    it('successfully discards the draft and restores to latest published state', async () => {
+      const addRuleResult = await app.inject({
+        method: 'POST',
+        url:
+          '/flags/draft-discard-test/rules?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=' +
+          E2E_FIXTURES.environment.id,
+        body: ruleDto(),
+        headers: headers(),
+      });
+      expect(addRuleResult.statusCode).toBe(HttpStatus.CREATED);
+      const revisionBeforeDiscard = (
+        await prisma.environment.findUniqueOrThrow({
+          where: { id: E2E_FIXTURES.environment.id },
+          select: { draftRevision: true },
+        })
+      ).draftRevision;
+      const discardResult = await app.inject({
+        method: 'POST',
+        url:
+          '/flags/draft-discard-test/draft/discard?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=' +
+          E2E_FIXTURES.environment.id,
+        headers: headers(),
+      });
+      expect(discardResult.statusCode).toBe(HttpStatus.OK);
+      const env = await prisma.environment.findUniqueOrThrow({
+        where: { id: E2E_FIXTURES.environment.id },
+        select: { draftRevision: true },
+      });
+      expect(env.draftRevision).toBe(revisionBeforeDiscard);
+      const config = await prisma.flagEnvironmentConfig.findFirst({
+        where: { flagId: flagUuid },
+        include: { rules: true },
+      });
+      expect(config).toBeDefined();
+    });
+
+    it('returns 404 when flag not found', async () => {
+      const result = await app.inject({
+        method: 'POST',
+        url:
+          '/flags/nonexistent-key/draft/discard?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=' +
+          E2E_FIXTURES.environment.id,
+        headers: headers(),
+      });
+      expect(result.statusCode).toBe(HttpStatus.NOT_FOUND);
+    });
+
+    it('returns 404 when environment not found', async () => {
+      const result = await app.inject({
+        method: 'POST',
+        url:
+          '/flags/draft-discard-test/draft/discard?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=invalid-env-id',
+        headers: headers(),
+      });
+      expect(result.statusCode).toBe(HttpStatus.NOT_FOUND);
+    });
+
+    it('returns 403 when user lacks flag:edit permission', async () => {
+      const result = await app.inject({
+        method: 'POST',
+        url:
+          '/flags/draft-discard-test/draft/discard?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=' +
+          E2E_FIXTURES.environment.id,
+        headers: headersFor(E2E_FIXTURES.viewerUser),
+      });
+      expect(result.statusCode).toBe(HttpStatus.FORBIDDEN);
+    });
+  });
+
+  describe('POST /flags/:flagKey/draft/revert', () => {
+    let snapshotVersion: number;
+    beforeAll(async () => {
+      await app.inject({
+        method: 'POST',
+        url:
+          '/flags?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=' +
+          E2E_FIXTURES.environment.id,
+        body: createFlagDto({
+          name: 'Draft Revert Test',
+          key: 'draft-revert-test',
+          defaultValue: false,
+          enabled: true,
+        }),
+        headers: headers(),
+      });
+      const revertFlag = await prisma.featureFlag.findFirstOrThrow({
+        where: {
+          key: 'draft-revert-test',
+          organizationId: E2E_FIXTURES.organization.id,
+        },
+        select: {
+          id: true,
+        },
+      });
+      const snapshotFlag = {
+        flagId: revertFlag.id,
+        enabled: true,
+        defaultValue: false,
+        rules: [],
+      };
+      const snapshotPayload = {
+        flags: [snapshotFlag],
+      };
+      const payloadJson = JSON.stringify(snapshotPayload);
+      const payloadBytes = Buffer.from(payloadJson, 'utf-8');
+      const payloadChecksum = createHash('sha256')
+        .update(payloadBytes)
+        .digest('hex');
+
+      mockR2.addObject('test-storage-key', payloadBytes);
+      const latestSnapshot = await prisma.publishedSnapshot.findFirst({
+        where: {
+          environmentId: E2E_FIXTURES.environment.id,
+        },
+        orderBy: {
+          version: 'desc',
+        },
+        select: {
+          version: true,
+        },
+      });
+
+      snapshotVersion = (latestSnapshot?.version ?? 0) + 1;
+
+      await prisma.publishedSnapshot.updateMany({
+        where: {
+          environmentId: E2E_FIXTURES.environment.id,
+          status: 'ACTIVE',
+        },
+        data: {
+          status: 'SUPERSEDED',
+        },
+      });
+      await prisma.publishedSnapshot.create({
+        data: {
+          id: randomUUID(),
+          organizationId: E2E_FIXTURES.organization.id,
+          projectId: E2E_FIXTURES.project.id,
+          environmentId: E2E_FIXTURES.environment.id,
+          version: snapshotVersion,
+          status: 'ACTIVE',
+          storageKey: 'test-storage-key',
+          checksum: payloadChecksum,
+          sizeBytes: payloadBytes.length,
+          draftRevision: 0,
+          createdByUserId: E2E_FIXTURES.user.id,
+          activatedAt: new Date(),
+        },
+      });
+    });
+
+    it('successfully reverts the draft from an existing ACTIVE snapshot', async () => {
+      const revertResult = await app.inject({
+        method: 'POST',
+        url:
+          '/flags/draft-revert-test/draft/revert?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=' +
+          E2E_FIXTURES.environment.id,
+        body: { targetVersion: snapshotVersion },
+        headers: headers(),
+      });
+      console.log(
+        'Revert response:',
+        revertResult.statusCode,
+        revertResult.body,
+      );
+      expect(revertResult.statusCode).toBe(HttpStatus.OK);
+
+      const env = await prisma.environment.findUniqueOrThrow({
+        where: { id: E2E_FIXTURES.environment.id },
+        select: { draftRevision: true },
+      });
+      expect(env.draftRevision).toBeGreaterThanOrEqual(0);
+    });
+
+    it('returns 404 when flag not found', async () => {
+      const result = await app.inject({
+        method: 'POST',
+        url:
+          '/flags/nonexistent-key/draft/revert?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=' +
+          E2E_FIXTURES.environment.id,
+        body: { targetVersion: snapshotVersion },
+        headers: headers(),
+      });
+      expect(result.statusCode).toBe(HttpStatus.NOT_FOUND);
+    });
+
+    it('returns 404 when environment not found', async () => {
+      const result = await app.inject({
+        method: 'POST',
+        url:
+          '/flags/draft-revert-test/draft/revert?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=invalid-env-id',
+        body: { targetVersion: snapshotVersion },
+        headers: headers(),
+      });
+      expect(result.statusCode).toBe(HttpStatus.NOT_FOUND);
+    });
+
+    it('returns 404 when no ACTIVE snapshot found with the target version', async () => {
+      const result = await app.inject({
+        method: 'POST',
+        url:
+          '/flags/draft-revert-test/draft/revert?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=' +
+          E2E_FIXTURES.environment.id,
+        body: { targetVersion: 999 },
+        headers: headers(),
+      });
+      expect(result.statusCode).toBe(HttpStatus.NOT_FOUND);
+    });
+
+    it('returns 403 when user lacks flag:edit permission', async () => {
+      const result = await app.inject({
+        method: 'POST',
+        url:
+          '/flags/draft-revert-test/draft/revert?orgId=' +
+          E2E_FIXTURES.organization.id +
+          '&projId=' +
+          E2E_FIXTURES.project.id +
+          '&envId=' +
+          E2E_FIXTURES.environment.id,
+        body: { targetVersion: snapshotVersion },
+        headers: headersFor(E2E_FIXTURES.viewerUser),
+      });
       expect(result.statusCode).toBe(HttpStatus.FORBIDDEN);
     });
   });

@@ -8,6 +8,8 @@ import {
   Body,
   Query,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { FlagService } from './flag.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -15,6 +17,7 @@ import { CreateFlagDto } from './dto/create-flag.dto';
 import { UpdateFlagDto } from './dto/update-flag.dto';
 import { CreateRuleDto } from './dto/create-rule.dto';
 import { UpdateRuleDto } from './dto/update-rule.dto';
+import { RevertDraftDto } from './dto/update-flag.dto';
 import { RequireOrgPermission } from 'src/rbac/org-permission.decorator';
 import { OrganizationGuard } from 'src/rbac/organization.guard';
 import { OrgPermissionGuard } from 'src/rbac/rbac.guard';
@@ -163,5 +166,43 @@ export class FlagController {
       envId,
       user.sub,
     );
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post(':flagKey/draft/save')
+  @RequireOrgPermission('flag:edit')
+  async saveDraft(
+    @Param('flagKey') flagKey: string,
+    @Query('orgId') orgId: string,
+    @Query('projId') projId: string,
+    @Query('envId') envId: string,
+    @CurrentUser() user: { sub: string },
+  ) {
+    return this.service.saveDraft(flagKey, orgId, projId, envId, user.sub);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post(':flagKey/draft/discard')
+  @RequireOrgPermission('flag:edit')
+  async discardDraft(
+    @Param('flagKey') flagKey: string,
+    @Query('orgId') orgId: string,
+    @Query('projId') projId: string,
+    @Query('envId') envId: string,
+  ) {
+    return this.service.discardDraft(flagKey, orgId, projId, envId);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post(':flagKey/draft/revert')
+  @RequireOrgPermission('flag:edit')
+  async revertDraft(
+    @Param('flagKey') flagKey: string,
+    @Query('orgId') orgId: string,
+    @Query('projId') projId: string,
+    @Query('envId') envId: string,
+    @Body() body: RevertDraftDto,
+  ) {
+    return this.service.revertDraft(flagKey, orgId, projId, envId, body);
   }
 }

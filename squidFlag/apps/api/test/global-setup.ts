@@ -11,7 +11,6 @@ export default async function globalSetup(): Promise<void> {
     quiet: true,
   });
 
-  // Import only after dotenv has loaded the environment.
   const { e2eConfig } = await import('./test-config');
 
   const config = parseEnv({
