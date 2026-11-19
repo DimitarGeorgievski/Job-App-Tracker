@@ -1273,4 +1273,268 @@ export class FlagService {
       );
     });
   }
+  async publishSnapshot(
+    orgId: string,
+    projId: string,
+    envId: string,
+    userId: string,
+  ): Promise<{
+    success: boolean;
+    publishedSnapshot: {
+      id: string;
+      version: number;
+      status: 'PENDING' | 'ACTIVE' | 'SUPERSEDED' | 'FAILED';
+      storageKey: string;
+    };
+    draftRevision: number;
+  }> {
+    const resolvedOrgId = await this.resolveOrganizationId(orgId, projId);
+
+    if (!uuidRegex.test(envId)) {
+      throw new NotFoundException('Environment not found');
+    }
+
+    const env = await this.prisma.environment.findFirst({
+      where: {
+        id: envId,
+        organizationId: resolvedOrgId,
+        projectId: projId,
+        archivedAt: null,
+      },
+      select: {
+        id: true,
+        draftRevision: true,
+        project: {
+          select: {
+            id: true,
+            slug: true,
+          },
+        },
+        organizationId: true,
+      },
+    });
+
+    if (!env) {
+      throw new NotFoundException('Environment not found');
+    }
+    const existingActive = await this.prisma.publishedSnapshot.findFirst({
+      where: {
+        environmentId: env.id,
+        status: 'ACTIVE',
+      },
+      select: {
+        id: true,
+        version: true,
+        status: true,
+        draftRevision: true,
+        storageKey: true,
+      },
+    });
+
+    // Idempotency check: only return existing ACTIVE snapshot if its
+    // draftRevision matches the environment's current draftRevision.
+    // If the draftRevision has changed, allow publishing a new snapshot.
+    if (
+      existingActive &&
+      existingActive.status === 'ACTIVE' &&
+      existingActive.draftRevision === env.draftRevision
+    ) {
+      return {
+        success: true,
+        publishedSnapshot: {
+          id: existingActive.id,
+          version: existingActive.version,
+          status: existingActive.status,
+          storageKey: existingActive.storageKey,
+        },
+        draftRevision: env.draftRevision,
+      };
+    }
+
+    // Build the environment-level snapshot from all flag environments configs.
+    const flagConfigs = await this.prisma.flagEnvironmentConfig.findMany({
+      where: {
+        organizationId: resolvedOrgId,
+        projectId: projId,
+        environmentId: env.id,
+        flag: {
+          archivedAt: null,
+        },
+      },
+      include: {
+        flag: true,
+        rules: {
+          orderBy: {
+            priority: 'asc',
+          },
+        },
+      },
+    });
+
+    // Construct the snapshot payload matching the v1 contract.
+    const snapshotFlags = flagConfigs.map((config) => {
+      const flag = config.flag;
+      const rules = config.rules.map((rule) => ({
+        id: rule.id,
+        priority: rule.priority,
+        conditions: rule.conditions as Array<{
+          attribute: string;
+          operator:
+            | 'equals'
+            | 'notEquals'
+            | 'in'
+            | 'notIn'
+            | 'startsWith'
+            | 'endsWith'
+            | 'contains'
+            | 'gt'
+            | 'gte'
+            | 'lt'
+            | 'lte'
+            | 'exists'
+            | 'versionEquals'
+            | 'versionGt'
+            | 'versionGte'
+            | 'versionLt'
+            | 'versionLte';
+          value: unknown;
+        }>,
+        result: rule.result,
+      }));
+
+      return {
+        flagId: flag.id,
+        enabled: config.enabled,
+        defaultValue: config.defaultValue,
+        rules,
+      };
+    });
+
+    const payload: EnvironmentSnapshotPayload = {
+      flags: snapshotFlags,
+    };
+
+    // Serialize the snapshot to JSON.
+    const body = Buffer.from(JSON.stringify(payload, null, 2));
+
+    // Compute SHA-256 checksum.
+    const checksum = createHash('sha256').update(body).digest('hex');
+
+    // Allocate the next snapshot version safely using the maximum version
+    // currently in the PublishedSnapshot table for this environment.
+    // This does NOT derive version from draftRevision; versions are globally
+    // unique per environment via the @@unique([environmentId, version]) index.
+    const maxVersionRow = await this.prisma.publishedSnapshot.findFirst({
+      where: {
+        environmentId: env.id,
+      },
+      select: { version: true },
+      orderBy: { version: 'desc' },
+    });
+    const newVersion = (maxVersionRow?.version ?? 0) + 1;
+
+    // Generate the R2 key (storage key): snapshots/{environmentId}/{version}.json
+    const storageKey: string = `snapshots/${env.id}/${newVersion}.json`;
+
+    // Create the PENDING PublishedSnapshot record before uploading to R2.
+    // This ensures the DB record exists first; if R2 upload fails we can
+    // mark the snapshot FAILED while keeping the previous ACTIVE snapshot unchanged.
+    const pendingSnapshot = await this.prisma.publishedSnapshot.create({
+      data: {
+        organizationId: resolvedOrgId,
+        projectId: projId,
+        environmentId: env.id,
+        version: newVersion,
+        status: 'PENDING',
+        storageKey,
+        checksum,
+        sizeBytes: body.length,
+        draftRevision: env.draftRevision,
+        sourceVersion: undefined,
+        comment: undefined,
+        createdByUserId: userId,
+      },
+      select: {
+        id: true,
+        version: true,
+        status: true,
+        storageKey: true,
+        checksum: true,
+        sizeBytes: true,
+        draftRevision: true,
+      },
+    });
+
+    // Upload to R2 outside of any DB transaction.
+    let r2UploadResult: { sizeBytes: number; checksum: string } | null = null;
+
+    if (this.r2) {
+      r2UploadResult = await this.r2.putObject(storageKey, body);
+    }
+
+    // If R2 upload failed, mark the snapshot as FAILED and return.
+    // The previous ACTIVE snapshot remains untouched.
+    if (!r2UploadResult) {
+      await this.prisma.publishedSnapshot.update({
+        where: { id: pendingSnapshot.id },
+        data: {
+          status: 'FAILED',
+          failureCode: 'R2_UPLOAD_FAILED',
+        },
+      });
+
+      return {
+        success: false,
+        publishedSnapshot: {
+          id: pendingSnapshot.id,
+          version: pendingSnapshot.version,
+          status: 'FAILED' as const,
+          storageKey: pendingSnapshot.storageKey,
+        },
+        draftRevision: env.draftRevision,
+      };
+    }
+
+    // Within a DB transaction, activate the new snapshot:
+    //   1. Transition the previous ACTIVE snapshot for this environment to SUPERSEDED.
+    //   2. Transition the new PENDING snapshot to ACTIVE.
+    await this.prisma.$transaction(async (tx) => {
+      // Transition the previous ACTIVE snapshot for this environment to SUPERSEDED.
+      // We exclude the new snapshot being activated so we don't accidentally
+      // double-transition it or leave a stale ACTIVE row.
+      await tx.publishedSnapshot.updateMany({
+        where: {
+          environmentId: env.id,
+          status: 'ACTIVE',
+          NOT: { id: pendingSnapshot.id },
+        },
+        data: {
+          status: 'SUPERSEDED',
+          failureCode: undefined,
+        },
+      });
+
+      // Transition the new snapshot to ACTIVE.
+      await tx.publishedSnapshot.update({
+        where: { id: pendingSnapshot.id },
+        data: {
+          status: 'ACTIVE',
+          activatedAt: new Date(),
+        },
+      });
+    });
+
+    // Do NOT increment env.draftRevision. The draft state is preserved.
+
+    return {
+      success: true,
+      publishedSnapshot: {
+        id: pendingSnapshot.id,
+        version: pendingSnapshot.version,
+        status: 'ACTIVE',
+        storageKey: pendingSnapshot.storageKey,
+      },
+      draftRevision: env.draftRevision,
+    };
+  }
 }

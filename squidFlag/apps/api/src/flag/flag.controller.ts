@@ -205,4 +205,16 @@ export class FlagController {
   ) {
     return this.service.revertDraft(flagKey, orgId, projId, envId, body);
   }
+
+  @HttpCode(HttpStatus.OK)
+  @Post(':flagKey/publish')
+  @RequireOrgPermission('publish')
+  async publish(
+    @Query('orgId') orgId: string,
+    @Query('projId') projId: string,
+    @Query('envId') envId: string,
+    @CurrentUser() user: { sub: string },
+  ) {
+    return this.service.publishSnapshot(orgId, projId, envId, user.sub);
+  }
 }
